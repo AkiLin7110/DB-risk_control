@@ -24,18 +24,18 @@ headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
 }
 
-def get_data1(data_type:str):
+def get_data1(filepath:str, data_type:str):
     '''import/export'''
     signal = 1
     while signal:
         tmp = round(datetime.now().timestamp()*1000)
         res = session.get(f'https://portal.sw.nat.gov.tw/APGA/Captcha_validNumGenerate?time={tmp}', stream = True, verify = False)
-        f = open('new_data/check.png', 'wb')
+        f = open(f'{filepath}check.png', 'wb')
         shutil.copyfileobj(res.raw, f)
         f.close()
 
         ocr = ddddocr.DdddOcr()
-        with open('new_data/check.png', 'rb') as f:
+        with open(f'{filepath}check.png', 'rb') as f:
             img_bytes = f.read()
         code = ocr.classification(img_bytes)
 
@@ -102,7 +102,9 @@ def get_data1(data_type:str):
         month_data = {
             "category": columns[0].text.strip(),
             "date": columns[1].text.strip().split('\n')[0],
-            "usd_amount": columns[6].text.strip()
+            "中文貨名":columns[3].text.strip().split('\n')[0],
+            "國家": columns[5].text,
+            f"{data_type}_美元": columns[6].text.strip()
         }
         data.append(month_data)
 
@@ -635,10 +637,26 @@ def get_data_10(airport):
 if __name__ == '__main__':
 
     # # 1: 進出口總值
-    # data_import = get_data1('import')
-    # data_export = get_data1('export')
-    # test = pd.concat([data_import, data_export])
-    # test.to_excel('new_data/1_進出口總值(美元).xlsx')
+    GEO = '中國大陸'
+    data_import = get_data1('import')
+    data_export = get_data1('export')
+    test = pd.merge(data_import, data_export, how = 'outer', on = 'date')
+    def convert_roc_to_gregorian(roc_date):
+        # Split year and month
+        year_str, month_str = roc_date.split('年')
+        year = int(year_str)
+        month = int(month_str.replace('月', ''))
+        
+        # Convert ROC year to Gregorian year
+        gregorian_year = year + 1911
+        
+        # Return as formatted string
+        return f"{gregorian_year}-{month:02d}"
+
+    # Apply the conversion to the dataframe
+    test['gregorian_date'] = test['date'].apply(convert_roc_to_gregorian)
+    test = test.sort_values('gregorian_date')
+    test.to_excel(f'new_data/1_{GEO}_進出口總值(美元).xlsx')
 
     # # 2: google_trend
     # GEO = 'IN'
@@ -714,7 +732,7 @@ if __name__ == '__main__':
     # df.to_excel(f'new_data/9_2_volume_{query}.xlsx')
 
     # 10:機場吞吐量
-    airport = 'PVG'
-    df = get_data_10(airport)
-    df.to_excel(f'new_data/10_機場吞吐量_{airport}.xlsx')
+    # airport = 'PVG'
+    # df = get_data_10(airport)
+    # df.to_excel(f'new_data/10_機場吞吐量_{airport}.xlsx')
 

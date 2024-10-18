@@ -1,1 +1,84 @@
-<html><body><h1>Hello World</h1></body></html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=0.6">
+</head>
+
+<body>
+    <h3>可互換之搪孔或拉孔工具，工具機用</h3>
+    
+    <form method='post' action={{ url_for('update_data1') }}>
+        <p>
+        <button type='submit'>更新資料</button>
+    </p>
+    </form>
+    <!-- 長條圖顯示的位置 -->
+    <canvas id="myChart"></canvas>
+    
+    <!-- 引入 Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>產品分析</title>
+    <script>
+        const indexs = {{indexs | safe}}
+        const label_im = {{ label_im | safe }};  // Ensure the list is safe to use
+        // const data_im_indexs = {{ data_im_indexs | safe }};  // Ensure the list is safe to use
+        const data_im_values = {{ data_im_values | safe }};  // Ensure the list is safe to use
+        const cleaned_data_im_values = data_im_values.map(val => (isNaN(val) ? 0 : val));
+
+        const label_ex = {{ label_ex | safe }};  // Ensure the list is safe to use
+        // const data_ex_indexs = {{ data_ex_indexs | safe }};  // Ensure the list is safe to use
+        const data_ex_values = {{ data_ex_values | safe }};  // Ensure the list is safe to use
+
+        const chartElement = document.getElementById('myChart');
+
+        new Chart(chartElement, {
+            data: {
+                labels: indexs,
+                datasets: [
+                    {
+                        type: 'line',
+                        label: label_im,
+                        data: cleaned_data_im_values,
+                        yAxisID: 'y-axis-left',  // First Y-axis
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                    },
+                    {
+                        type: 'line',
+                        label: label_ex,
+                        data: data_ex_values,
+                        yAxisID: 'y-axis-right',  // Second Y-axis
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    yAxes: [
+                        {
+                            id: 'y-axis-left',
+                            type: 'linear',
+                            position: 'left',
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        },
+                        {
+                            id: 'y-axis-right',
+                            type: 'linear',
+                            position: 'right',
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }
+                    ]
+                }
+            }
+        });
+        
+    </script>
+    
+</body>
+
+</html>
