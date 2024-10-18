@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+        <meta charset="UTF-8">
+        <title>Home</title>
+</head>
+<body>
+        <h1>PESTEL 外部環境分析總結</h1>
+        <style type="text/css">
+            .tg  {border-collapse:collapse;border-spacing:0;}
+            .tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+              overflow:hidden;padding:10px 5px;word-break:normal;}
+            .tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+              font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+            .tg .tg-27uu{background-color:#DCFFC9;border-color:inherit;text-align:left;vertical-align:top}
+            .tg .tg-nr52{background-color:#dcffc9;border-color:inherit;text-align:left;vertical-align:top}
+            .tg .tg-c3ow{border-color:inherit;text-align:center;vertical-align:top}
+            .tg .tg-0pky{border-color:inherit;text-align:left;vertical-align:top}
+            .tg .tg-90e1{background-color:#ffccc9;border-color:inherit;text-align:left;vertical-align:top}
+            .tg .tg-ujo9{background-color:#FFCCC9;border-color:inherit;text-align:left;vertical-align:top}
+            </style>
+            <table class="tg"><thead>
+              <tr>
+                <th class="tg-0pky"></th>
+                <th class="tg-c3ow" colspan="2">P 政治</th>
+                <th class="tg-c3ow" colspan="2">E 經濟</th>
+                <th class="tg-c3ow" colspan="2">S 社會</th>
+                <th class="tg-c3ow" colspan="2">T 科技</th>
+                <th class="tg-c3ow" colspan="2">E 環境</th>
+                <th class="tg-c3ow" colspan="2">L 合法性</th>
+              </tr></thead>
+            <tbody>
+              <tr>
+                <td class="tg-0pky"></td>
+                <td class="tg-90e1">優勢</td>
+                <td class="tg-nr52">劣勢</td>
+                <td class="tg-ujo9">優勢</td>
+                <td class="tg-27uu">劣勢</td>
+                <td class="tg-ujo9">優勢</td>
+                <td class="tg-27uu">劣勢</td>
+                <td class="tg-ujo9">優勢</td>
+                <td class="tg-27uu">劣勢</td>
+                <td class="tg-ujo9">優勢</td>
+                <td class="tg-27uu">劣勢</td>
+                <td class="tg-ujo9">優勢</td>
+                <td class="tg-27uu">劣勢</td>
+              </tr>
+              <tr>
+                <td class="tg-0pky">趨勢</td>
+                <td class="tg-90e1"></td>
+                <td class="tg-nr52"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+              </tr>
+              <tr>
+                <td class="tg-0pky">資訊描述</td>
+                <td class="tg-90e1"></td>
+                <td class="tg-nr52"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+              </tr>
+              <tr>
+                <td class="tg-0pky">資訊連結</td>
+                <td class="tg-90e1"></td>
+                <td class="tg-nr52"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+                <td class="tg-ujo9"></td>
+                <td class="tg-27uu"></td>
+              </tr>
+            </tbody></table>
+
+        <form method='post' action={{ url_for('product_analysis') }}>
+            <p>
+            <button type='submit'>產品分析</button>
+        </p>
+        </form>
+
+        <form method='post' action={{ url_for('economic_analysis') }}>
+            <p>
+            <button type='submit'>經濟分析</button>
+        </p>
+        </form>
+
+        <form method='post' action={{ url_for('government') }}>
+            <p>
+            <button type='submit'>政府補助</button>
+        </p>
+        </form>
+
+
+
+</html>
+</body>
+</html>
