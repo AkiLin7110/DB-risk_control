@@ -137,7 +137,8 @@ def get_data2(GEO:str):
 
     '''每日數據, 如果直接抓超過3月以上會變成每周取一天'''
     df = pd.DataFrame()
-    for i in tqdm(range(0,len(date_list)-1)):
+    for i in tqdm(range(0,5)):
+    # for i in tqdm(range(0,len(date_list)-1)):
         pytrends.build_payload(kw_list, cat=0, timeframe = f'{date_list[i]} {date_list[i+1]}', geo = GEO, gprop='')
         tmp = pytrends.interest_over_time()
         df = pd.concat([tmp, df])
@@ -213,6 +214,7 @@ def get_data3(lastet_month:str):
     df = df.map(lambda x: np.nan if x == '' else x)
     df = df.astype(float)
     df = df[df.columns[:-1]].copy()
+    print('完成爬蟲!')
 
     return df
 
@@ -637,26 +639,26 @@ def get_data_10(airport):
 if __name__ == '__main__':
 
     # # 1: 進出口總值
-    GEO = '中國大陸'
-    data_import = get_data1('import')
-    data_export = get_data1('export')
-    test = pd.merge(data_import, data_export, how = 'outer', on = 'date')
-    def convert_roc_to_gregorian(roc_date):
-        # Split year and month
-        year_str, month_str = roc_date.split('年')
-        year = int(year_str)
-        month = int(month_str.replace('月', ''))
+    # GEO = '中國大陸'
+    # data_import = get_data1('import')
+    # data_export = get_data1('export')
+    # test = pd.merge(data_import, data_export, how = 'outer', on = 'date')
+    # def convert_roc_to_gregorian(roc_date):
+    #     # Split year and month
+    #     year_str, month_str = roc_date.split('年')
+    #     year = int(year_str)
+    #     month = int(month_str.replace('月', ''))
         
-        # Convert ROC year to Gregorian year
-        gregorian_year = year + 1911
+    #     # Convert ROC year to Gregorian year
+    #     gregorian_year = year + 1911
         
-        # Return as formatted string
-        return f"{gregorian_year}-{month:02d}"
+    #     # Return as formatted string
+    #     return f"{gregorian_year}-{month:02d}"
 
-    # Apply the conversion to the dataframe
-    test['gregorian_date'] = test['date'].apply(convert_roc_to_gregorian)
-    test = test.sort_values('gregorian_date')
-    test.to_excel(f'new_data/1_{GEO}_進出口總值(美元).xlsx')
+    # # Apply the conversion to the dataframe
+    # test['gregorian_date'] = test['date'].apply(convert_roc_to_gregorian)
+    # test = test.sort_values('gregorian_date')
+    # test.to_excel(f'new_data/1_{GEO}_進出口總值(美元).xlsx')
 
     # # 2: google_trend
     # GEO = 'IN'
@@ -673,9 +675,9 @@ if __name__ == '__main__':
     # df.to_excel('new_data/4_政府推動計畫名單.xlsx', index = 0)
 
     # 5: 經濟數據
-    # GEO = 'united-states'
-    # df = get_data5(GEO)
-    # df.to_excel(f'new_data/5_經濟數據_{GEO}.xlsx', index = 0)
+    GEO = 'united-states'
+    df = get_data5(GEO)
+    df.to_excel(f'new_data/5_經濟數據_{GEO}.xlsx', index = 0)
 
     # 6: IMD 競爭力指標
     # GEO = 'usa'

@@ -2,22 +2,126 @@
 
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=0.6">
+    <title>產品分析</title>
+    <style>
+        .table-container {
+            width: 100%; /* Set a width for the container */
+            max-height: 400px; /* Fixed height */
+            overflow-y: scroll; /* Vertical scrolling */
+            overflow-x: auto; /* Horizontal scrolling if needed */
+            border: 1px solid #ddd; /* Optional: border around the table container */
+        }
+
+        table.data {
+            width: 100%;
+            border-collapse: collapse; /* Ensure the borders are collapsed */
+        }
+
+        table.data th, table.data td {
+            border: 1px solid #ddd; /* Border for the table */
+            padding: 8px;
+            text-align: left;
+        }
+
+        table.data th {
+            background-color: #f2f2f2;
+            position: sticky; /* Keep header row fixed during vertical scroll */
+            top: 0;
+        }
+        table {
+            display: block;
+            max-height: 370px;
+            overflow: auto;
+        }
+        .item-box {
+            border: 1px solid #e3e3e3;
+            padding: 1rem;
+            width: 300px;
+            cursor: pointer;
+        }
+        .sortable-selected {
+            background-color: #e3e3e3;
+            border: 1px solid #000;
+        }
+    </style>
 </head>
 
 <body>
-    <h3>可互換之搪孔或拉孔工具，工具機用</h3>
+    <h2>進出口資料</h2>
     
     <form method='post' action={{ url_for('update_data1') }}>
         <p>
         <button type='submit'>更新資料</button>
     </p>
     </form>
-    <!-- 長條圖顯示的位置 -->
-    <canvas id="myChart"></canvas>
+
+    <div style="display: flex; justify-content: space-between;">
+        <!-- 左邊的長條圖 -->
+        <div style="width: 50%;">
+            <h3>可互換之搪孔或拉孔工具，工具機用</h3>
+            <canvas id="myChart"></canvas>
+        </div>
+
+        <!-- 右邊的圓餅圖 -->
+        <div style="width: 40%;">
+            <h3>公司佔台灣出口佔比</h3>
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>    
+
+    <h2>各國產品搜索量</h2>
+    {% if GEO == "" %}
+    <form method="post" action="{{ url_for('update_data2') }}">
+        <p>
+            <input type="text" name="GEO" placeholder="Enter GEO">
+            <input type="submit" name="GEO" value="Submit">
+        </p>
+    </form>
+    {% else %}
+        <p>國家:{{ GEO }}</p>
+        <div style="height:90%;width:90%;">
+            <canvas id="SEOChart"></canvas>
+        </div> 
+    {% endif %}
     
+    <h2>工業生產增加率</h2>
+    <form method='post' action={{ url_for('update_data3') }}>
+        <p>
+        <button type='submit'>更新資料</button>
+    </p>
+    </form>
+    <div style="height:90%;width:90%;">
+        <canvas id="chartContainer"></canvas>
+    </div> 
+
+    <h2>政府推動計畫名單</h2>
+    <input type="text" id="searchInput" placeholder="Search for keywords">
+    <div>
+        {% for table in tables %}
+        {{ table|safe }}
+        {% endfor %}
+    </div>
+
+    <h2>各國經濟總覽</h2>
+    <form method='post' action={{ url_for('update_data5') }}>
+        <p>
+        <button type='submit'>更新資料</button>
+        </p>
+    </form>
+    <div id="sortable1">
+        {% for df5_label in df5_labels %}
+        <div class="item-box">
+            {{ df5_label|safe }}
+        </div>
+        {% endfor %}
+    </div>
+
+
+
+
+
     <!-- 引入 Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <title>產品分析</title>
     <script>
         const indexs = {{indexs | safe}}
         const label_im = {{ label_im | safe }};  // Ensure the list is safe to use
@@ -55,30 +159,175 @@
             },
             options: {
                 scales: {
-                    yAxes: [
-                        {
-                            id: 'y-axis-left',
-                            type: 'linear',
-                            position: 'left',
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        },
-                        {
-                            id: 'y-axis-right',
-                            type: 'linear',
-                            position: 'right',
-                            ticks: {
-                                beginAtZero: true
-                            }
+                    'y-axis-left': {
+                        type: 'linear',
+                        position: 'left',
+                        ticks: {
+                            beginAtZero: true
                         }
-                    ]
+                    },
+                    'y-axis-right': {
+                        type: 'linear',
+                        position: 'right',
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }
                 }
             }
         });
         
     </script>
     
+    <script>
+        const newchartElement = document.getElementById('pieChart');
+        new Chart(newchartElement, {
+        type: 'pie',
+        data: {
+            labels: [
+            '伺服電機',
+            '控制器',
+            '其他'
+            ],
+            datasets: [{
+            label: '營收百分比',
+            data: [54, 42, 4], // 需要先把數字轉為百分比
+            }]
+        },
+        options: {
+            plugins: {
+            tooltip: { // hover
+                callbacks: {
+                label: function(context) {
+                    return ` ${context.parsed} %`; // 想顯示的內容
+                }
+                }
+            }
+            }
+        }
+        });
+    </script>
+
+    <script>
+        const data_indexes = {{data_indexes | safe}}
+        const data_controller = {{data_controller | safe}}
+        const data_machine = {{data_machine | safe}}
+        const label_2_1 = {{label_2_1 | safe}}
+        const label_2_2 = {{label_2_2 | safe}}
+        const SEOchartElement = document.getElementById('SEOChart');
+        
+        if (SEOchartElement) {  // Ensure the canvas element exists
+            const context = SEOchartElement.getContext('2d');
+            
+            if (context) {  // Ensure context is acquired
+                new Chart(context, {
+                    data: {
+                        labels: data_indexes,  // Ensure data_indexes is defined
+                        datasets: [
+                            {
+                                type: 'line',
+                                label: label_2_1,  // Ensure label_2_1 is defined
+                                data: data_controller,  // Ensure data_controller is defined
+                                borderColor: 'blue',
+                                backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                            },
+                            {
+                                type: 'line',
+                                label: label_2_2,  // Ensure label_2_2 is defined
+                                data: data_machine,  // Ensure data_machine is defined
+                                borderColor: 'green',
+                                backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                            }
+                        ]
+                    }
+                });
+            } else {
+                console.error('Failed to acquire context for SEOChart.');
+            }
+        }
+    </script>
+
+    <script>
+        const indexs_3 = {{indexs_3 | safe}}
+        const label_3 = {{label_3 | safe}}
+        const data = {{data | safe}}
+
+        const ctx = document.getElementById('chartContainer').getContext('2d');
+        
+        // Prepare datasets for each country
+        const datasets = label_3.map(country => ({
+            label: country,
+            data: data[country],
+            fill: false,
+            borderColor: getRandomColor(),
+            tension: 0.1
+        }));
+
+        // Function to generate random colors for each line
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Create the chart
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: indexs_3, // X-axis (e.g., time periods)
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time Period'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Value'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $("#searchInput").on("keyup", function() {
+                var value = $(this).val().toLowerCase();
+                $("table.data tbody tr").filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+                });
+            });
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <script>
+        const sortable1El = document.getElementById('sortable1')
+        const sortable1 = Sortable.create(sortable1El, {
+            multiDrag: true, // 可以多選
+            selectedClass: "sortable-selected", // 多選時的class
+            fallbackTolerance: 3, // 在手機版上可以多選
+            animation: 150
+        })
+    </script>
 </body>
 
 </html>
