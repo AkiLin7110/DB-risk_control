@@ -18,6 +18,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 
+import re
+
 session = requests.Session()
 
 headers = {
@@ -384,7 +386,7 @@ def get_data7_1():
     tables = soup.find_all('table')
 
     # Function to extract table data
-    def parse_table(table):
+    def parse_table(table, datatype = 0):
         data = []
         rows = table.find_all('tr')
 
@@ -394,24 +396,51 @@ def get_data7_1():
 
         # Get the rest of the rows
         count = 0
-        for row in rows:
+        for row in rows[1:]:
             cols = row.find_all('td')
             cols = [ele.get_text(strip=True) for ele in cols]
-            data.append(cols)
+            if datatype == 1:
+                new_cols = [cols[i] for i in [0,1,3]]
+            else:
+                new_cols = [cols[i] for i in [0,1]]
+            data.append(new_cols)
             count+=1
+        
+        if datatype == 1:
+            return pd.DataFrame(data[2:])
+        else:
+            return pd.DataFrame(data[1:])
 
-        return pd.DataFrame(data[1:])
+    def get_column(datatype, soup):
+        text = soup.find_all('div', {'class':'title2'})[datatype].text.split()[0]
+        date_pattern = r"\d{4}-\d{2}"
+        date_match = re.search(date_pattern, text).group()
+
+        if datatype == 0:
+            chinese_content_pattern = r"[\u4e00-\u9fff]+"
+            chinese_match = re.search(chinese_content_pattern, text).group()
+
+            return chinese_match, date_match
+        else:
+            split_content = re.split(r"/", text)
+
+            # Extracting Chinese content before and after '/'
+            before_slash = re.findall(r"[\u4e00-\u9fff]+", split_content[0])[0] if len(split_content) > 0 else []
+            after_slash = re.findall(r"[\u4e00-\u9fff]+", split_content[1])[0] if len(split_content) > 1 else []
+            return before_slash, after_slash, date_match
 
     # Extract data from both tables
-    df_comprehensive = parse_table(tables[0])  # Comprehensive Punctuality Index
-    df_trunk_routes = parse_table(tables[1])   # Global Trunk Routes Punctuality
+    df_comprehensive = parse_table(tables[0],0)  # Comprehensive Punctuality Index
+    df_trunk_routes = parse_table(tables[1],1)   # Global Trunk Routes Punctuality
 
-    # Extract additional titles (assuming these titles are displayed somewhere in the HTML)
-    comprehensive_title = "全球主干航线综合准班率指数"
-    trunk_routes_title = "全球主干航线到离港/收发货准班率指数"
+    chinese_match, date_match = get_column(datatype = 0, soup = soup)
+    df_comprehensive.columns = ['指數名稱', chinese_match]
+    df_comprehensive[chinese_match+'_time'] = date_match
 
-    df_trunk_routes.iloc[0] = [df_trunk_routes.iloc[0][0], df_trunk_routes.iloc[0][1], df_trunk_routes.iloc[0][1], df_trunk_routes.iloc[0][2], df_trunk_routes.iloc[0][2]]
-    df_trunk_routes.iloc[1] = ['',df_trunk_routes.iloc[1][0], df_trunk_routes.iloc[1][1], df_trunk_routes.iloc[1][2], df_trunk_routes.iloc[1][3]]
+    before_slash, after_slash, date_match = get_column(datatype = 1, soup = soup)
+    df_trunk_routes.columns = ['航線', before_slash, after_slash]
+    df_trunk_routes[f'{before_slash}_time'] = date_match
+    df_trunk_routes[f'{after_slash}_time'] = date_match
 
     return df_comprehensive, df_trunk_routes
 
@@ -636,7 +665,7 @@ def get_data_10(airport):
     return df
     
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
     # # 1: 進出口總值
     # GEO = '中國大陸'
@@ -675,9 +704,9 @@ if __name__ == '__main__':
     # df.to_excel('new_data/4_政府推動計畫名單.xlsx', index = 0)
 
     # 5: 經濟數據
-    GEO = 'united-states'
-    df = get_data5(GEO)
-    df.to_excel(f'new_data/5_經濟數據_{GEO}.xlsx', index = 0)
+    # GEO = 'united-states'
+    # df = get_data5(GEO)
+    # df.to_excel(f'new_data/5_經濟數據_{GEO}.xlsx', index = 0)
 
     # 6: IMD 競爭力指標
     # GEO = 'usa'
@@ -686,8 +715,8 @@ if __name__ == '__main__':
 
     # 7-1: 主幹航線準確率
     # df1, df2 = get_data7_1()
-    # df1.to_excel(f'new_data/7_上海航運交易所_全球主幹航線綜合準班率指數.xlsx', header = 0, index = 0)
-    # df2.to_excel(f'new_data/7_上海航運交易所_全球主幹航線到離港與收發獲準班率指數.xlsx', header = 0, index = 0)
+    # df1.to_excel(f'auto/new_data/7_上海航運交易所_全球主幹航線綜合準班率指數.xlsx', header = 0, index = 0)
+    # df2.to_excel(f'auto/new_data/7_上海航運交易所_全球主幹航線到離港與收發獲準班率指數.xlsx', header = 0, index = 0)
 
     # 7-2: 港口班輪準確率
     # df = get_data7_2()
@@ -737,4 +766,3 @@ if __name__ == '__main__':
     # airport = 'PVG'
     # df = get_data_10(airport)
     # df.to_excel(f'new_data/10_機場吞吐量_{airport}.xlsx')
-

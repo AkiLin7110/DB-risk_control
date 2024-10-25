@@ -33,15 +33,61 @@
             max-height: 370px;
             overflow: auto;
         }
+
+        .scrollable-container {
+        max-height: 400px; /* Adjust this value as needed */
+        overflow-y: auto; /* Enable vertical scrolling */
+        border: 1px solid #ddd; /* Optional border */
+        padding: 10px;
+        width: 20%; /* Full width */
+        }
+
         .item-box {
             border: 1px solid #e3e3e3;
             padding: 1rem;
-            width: 300px;
+            width: 100%; /* Full width of the container */
             cursor: pointer;
+            margin-bottom: 10px; /* Add some spacing between items */
         }
+
         .sortable-selected {
             background-color: #e3e3e3;
             border: 1px solid #000;
+        }
+        
+        /* 設置按鈕容器為 Flex 容器，橫向排列 */
+        .button-container {
+            display: flex;
+            flex-direction: column; /* 預設值，可省略 */
+            gap: 10px; /* 按鈕之間的間距 */
+            /* 可選擇添加下列屬性來調整對齊方式 */
+            /* justify-content: flex-start; */
+            /* align-items: center; */
+            /* 若按鈕數量過多，可允許換行 */
+            flex-wrap: wrap;
+        }
+
+        /* 設置按鈕的樣式 */
+        .item-box {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background-color: #C4E1FF; 
+            color: white;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        /* 按鈕懸停時的效果 */
+        .item-box:hover {
+            background-color: #66B3FF;
+        }
+
+        /* Additional styling if needed */
+        .btn-secondary {
+            background-color: #66B3FF;
+            color: white;
         }
     </style>
 </head>
@@ -108,14 +154,41 @@
         <button type='submit'>更新資料</button>
         </p>
     </form>
-    <div id="sortable1">
-        {% for df5_label in df5_labels %}
-        <div class="item-box">
-            {{ df5_label|safe }}
+    <div style="display: flex; justify-content: space-between;">
+        <div class="scrollable-container" id="sortable1">
+            {% for df5_label in df5_labels %}
+            <div class="item-box" data-value = "{{ df5[df5_label] | safe }}" name = "selection_query" value = "{{ df5_label|safe }}"> 
+                <!-- {{ df5.df5_label|safe }} -->
+                {{ df5_label|safe }}
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        
+        
+        <div style = "width:70%">
+            <canvas id="selectionChart"></canvas>
+        </div>
     </div>
 
+    <h2>航運數據</h2>
+    <form method='post' action={{ url_for('update_data7') }}>
+        <p>
+        <button type='submit'>更新資料</button>
+        </p>
+    </form>
+    <div class="btn-group" role="group" aria-label="Basic example">
+        <button type="button" class="btn btn-primary" data-value="全球主幹航線綜合準班率指數">全球主幹航線綜合準班率指數</button>
+        <button type="button" class="btn btn-primary">全球主幹航線到離港與收發獲準班率指數</button>
+        <!-- <button type="button" class="btn btn-primary">全球主幹航線到離港與收發獲準班率指數</button>
+        <button type="button" class="btn btn-primary">全球主幹航線綜合準班率指數</button>
+        <button type="button" class="btn btn-primary">海上絲綢之路運價指數</button>
+        <button type="button" class="btn btn-primary">港口班輪準確率</button>
+        <button type="button" class="btn btn-primary">集裝箱海運量指數</button> -->
+    </div>
+    
+    <div style = "width:70%">
+        <canvas id="shipping_chart"></canvas>
+    </div>
 
 
 
@@ -328,6 +401,217 @@
             animation: 150
         })
     </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const selectedItems = [];
+        const itemBoxes = document.querySelectorAll('.item-box');
+        itemBoxes.forEach(item => {
+        item.addEventListener('click', () => {
+            // 解析 data-value 屬性的 JSON 數據
+            const data = JSON.parse(item.getAttribute('data-value'));
+            const label = item.getAttribute('value');
+
+            // 查找是否已經選中
+            const existingIndex = selectedItems.findIndex(selected => selected.label === label && JSON.stringify(selected.data) === JSON.stringify(data));
+
+            if (existingIndex > -1) {
+                // 如果已選中，則取消選中
+                item.classList.remove('sortable-selected');
+                selectedItems.splice(existingIndex, 1);
+            } else {
+                // 如果未選中，則添加到選中項目中
+                item.classList.add('sortable-selected');
+                selectedItems.push({ label, data });
+            }
+
+            // 更新圖表
+            updateChart(selectedItems);
+        });
+    });
+
+        const sc = document.getElementById('selectionChart').getContext('2d');
+        let selectionChart = new Chart(sc, {
+            type: 'line',
+            data: {
+                labels: ['Label 1', 'Label 2', 'Label 3', 'Label 4'], // Example labels
+                datasets: []
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+
+
+        function updateChart(selectedData) {
+            const datasets = selectedData.map((item) => ({
+        label: item.label, // 使用實際的標籤
+        data: item.data,
+        fill: false,
+        borderColor: getRandomColor(),
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.1
+        }));
+
+            selectionChart.data.datasets = datasets;
+            selectionChart.update();
+        }
+
+        // Function to generate random colors for the chart lines
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    </script>
+
+    <script>
+        // Function to change color on click
+        const buttons = document.querySelectorAll('.btn');
+        buttons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Reset all buttons to the original color
+                buttons.forEach(btn => btn.classList.remove('btn-secondary'));
+                // Change the clicked button color
+                this.classList.add('btn-secondary');
+            });
+        });
+    </script>
+
+    <!-- data 7 -->
+    <script>
+        function drawChart() {
+            // Retrieve the data passed from the backend
+            console.log(df7)
+            // const df7_1_indexs = {{ df7_1_indexs | safe }};
+            // const df7_1_labels = {{ df7_1_labels | safe }};
+            // const df7_1 = {{ df7_1 | safe }};  // Ensure df7_1 is structured as an object or array
+    
+            // Log data to check structure (for debugging)
+            console.log("Index Labels: ", df7_1_indexs);
+            console.log("Labels: ", df7_1_labels);
+            console.log("Data: ", df7_1);
+    
+            // Get the chart context
+            const sc = document.getElementById('shipping_chart').getContext('2d');
+    
+            // Prepare datasets for each label with corresponding data
+            const datasets = df7_1_labels.map(label => ({
+                label: label,
+                data: df7_1[label],  // Access the specific data for each label
+                fill: false,
+                borderColor: getRandomColor(),
+                tension: 0.1
+            }));
+    
+            // Function to generate random colors for each line
+            function getRandomColor() {
+                const letters = '0123456789ABCDEF';
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+    
+            // Destroy any existing chart instance before creating a new one
+            if (window.shippingChart) {
+                window.shippingChart.destroy();
+            }
+    
+            // Create the new chart
+            window.shippingChart = new Chart(sc, {
+                type: 'line',
+                data: {
+                    labels: df7_1_indexs, // X-axis values (time periods)
+                    datasets: datasets    // Datasets for each label
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time Period'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Value'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    
+        // Add event listener for button clicks to trigger the chart generation
+        document.querySelectorAll('.btn').forEach(button => {
+            button.addEventListener('click', function () {
+                const df7_value = JSON.parse(this.getAttribute('data-value'));
+                drawChart(df7_value);  // Call drawChart on button click
+            });
+        });
+    </script>
+    
+
+    <!-- <script>
+        // Function to create the chart
+        function drawChart(data) {
+            const ctx = document.getElementById('shipping_chart').getContext('2d');
+
+            // Destroy the existing chart if it exists
+            if (window.shippingChart) {
+                window.shippingChart.destroy();
+            }
+
+            // Create a new chart
+            window.shippingChart = new Chart(ctx, {
+                type: 'bar', // You can change this to 'line', 'pie', etc.
+                data: {
+                    labels: ['Label 1', 'Label 2', 'Label 3', 'Label 4'], // Customize labels as per your data
+                    datasets: [{
+                        label: '航運數據',
+                        data: data,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Add event listener for button clicks
+        document.querySelectorAll('.btn').forEach(button => {
+            button.addEventListener('click', function () {
+                const data = JSON.parse(this.getAttribute('data-value'));
+                drawChart(data);
+            });
+        });
+    </script> -->
+    
+
 </body>
 
 </html>

@@ -1,7 +1,8 @@
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, jsonify
 from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data9_1, get_data9_2, get_data_10
-
+import json
 import pandas as pd
+from operator import itemgetter
 
 app = Flask(__name__)
 
@@ -67,12 +68,29 @@ def product_analysis():
         data[label_3[i]] = tmp
     
     '''政府支援研發計畫'''
-    df4 = pd.read_excel('auto/data/4_政府推動計畫名單.xlsx') 
+    df4 = pd.read_excel('auto/data/4_政府推動計畫名單.xlsx')
+
 
     '''概況總覽'''
-    # 寫入到舊有的excel檔的不同sheet裡面
-    df5 = pd.read_excel('auto/data/5_經濟數據_united-states.xlsx')
-    df5_labels = df5[(df5['總經種類'] == 'Overview')]['指標名稱'].to_list()
+    jsonFile = open("auto/data/5_經濟數據_united-states_overview.json",'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df5 = json.loads(f)      # 再使用 loads
+    jsonFile.close()
+    df5_labels = list([tmp for tmp in df5.keys() if '_date' not in tmp and '_unit' not in tmp])
+
+    '''航運數據'''
+    jsonFile = open('auto/data/7_上海航運交易所_航運數據.json','r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df7 = json.loads(f)
+    # df7_1_tmp = json.loads(f)['全球主幹航線綜合準班率指數']      # 再使用 loads
+    # df7_1_labels = list([tmp for tmp in df7_1_tmp.keys() if '_time' not in tmp])
+    # df7_1_indexs = list([df7_1_tmp[tmp] for tmp in df7_1_tmp.keys() if '_time' in tmp][0])
+    # df7_1 = {}
+    # for tmp in df7_1_labels:
+    #     df7_1[tmp] = df7_1_tmp[tmp]
+    # jsonFile.close()
+
+
 
     return render_template('product_analysis.html', indexs=indexs, titles=titles,
                            label_im=label_im, data_im_values=data_im_values, 
@@ -82,7 +100,10 @@ def product_analysis():
                            data_controller=data_controller, data_machine=data_machine,
                            indexs_3 = indexs_3, label_3 = label_3, data = data,
                            tables = [df4.to_html(classes='data', header="true")],
-                           df5_labels = df5_labels)
+                           df5_labels = df5_labels, df5 = df5,
+                        #    df7_1 = df7_1, df7_1_labels = df7_1_labels, df7_1_indexs = df7_1_indexs
+                            df7 = df7
+                           )
 
 @app.route('/operation_condition', methods=['GET', 'POST'])
 def operation_condition():
@@ -152,25 +173,84 @@ def update_data5():
 
     # 寫入到舊有的excel檔的不同sheet裡面
     path_new = 'auto/new_data/5_經濟數據_united-states.xlsx'
-    path_update = 'auto/data/5_經濟數據_united-states.xlsx'
+    path_update = 'auto/data/5_經濟數據_united-states_overview.json'
 
     df = pd.read_excel(path_new) 
     index_names = df[df['總經種類'] == 'Overview']['指標名稱'].values
-    with pd.ExcelWriter(engine = 'openpyxl', path = path_update, mode = 'a', if_sheet_exists = 'overlay') as writer: # mode='a'現有檔案讀寫
-        tmp_df = pd.read_excel(path_update, sheet_name = None) 
-        # 存到指定的sheet
-        for col in index_names:
-            if col in tmp_df.keys():
-                old_df = pd.read_excel(path_update, sheet_name = col, index_col = 0) # 舊資料
-                tmp = df[(df['總經種類'] == 'Overview') & (df['指標名稱'] == col)] # 新資料
-                old_df = pd.concat([old_df, tmp])
-                old_df.to_excel(writer, sheet_name = col) 
-            else:
-                print(col)
-                tmp = tmp_df['Sheet1'][(tmp_df['Sheet1']['總經種類'] == 'Overview') & (tmp_df['Sheet1']['指標名稱'] == col)]
-                tmp.to_excel(writer, sheet_name = col)
+
+    try:
+        jsonFile = open(path_update,'r')
+        f =  jsonFile.read()   # 要先使用 read 讀取檔案
+        df_update = json.loads(f)
+        jsonFile.close()
+    except:
+        df_update = {}
+
+    for tmp in index_names:
+        if tmp not in df_update.keys():
+            df_update[tmp] = []
+            df_update[f'{tmp}_date'] = []
+            df_update[f'{tmp}_unit'] = []
+        # if len(df_update[f'{tmp}_date']) > 0:
+        #     if df_update[f'{tmp}_date'][-1] == df[df['指標名稱'] == tmp]['公告日期'].values[0]:
+        #         break        
+        df_update[tmp].append(df[df['指標名稱'] == tmp]['Last'].values[0])
+        df_update[f'{tmp}_date'].append(df[df['指標名稱'] == tmp]['公告日期'].values[0])
+        df_update[f'{tmp}_unit'].append(df[df['指標名稱'] == tmp]['單位'].values[0])
+
+    json_data = json.dumps(df_update)
+    with open(path_update, "w") as json_file:
+        json_file.write(json_data)
+
     message = f'更新完成: {GEO} 概況'
     return render_template('update_product.html', message = message)
+
+@app.route('/update/get_data7', methods=['GET', 'POST'])
+def update_data7():
+    filepath = 'auto/new_data/'
+
+    df1, df2 = get_data7_1()
+    df1.to_excel(f'{filepath}7_上海航運交易所_全球主幹航線綜合準班率指數.xlsx', index = 0)
+    df2.to_excel(f'{filepath}7_上海航運交易所_全球主幹航線到離港與收發獲準班率指數.xlsx', index = 0)
+
+    # 7_1 database
+    jsonFile = open('auto/data/7_上海航運交易所_全球主幹航線綜合準班率指數.json','r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    shipping_db = json.loads(f)      # 再使用 loads
+    jsonFile.close()
+
+    df1_keys = list(df1['指數名稱'].values+'_time')+list(df1['指數名稱'].values)
+    shipping_keys = df1_keys
+    for tmp in shipping_keys:
+        # 創立
+        if tmp not in shipping_db.keys():
+            shipping_db[tmp] = []
+        
+        # 防止重複增加
+        tmp_new = tmp.split('_')[0]
+        new_time = df1[df1['指數名稱'] == tmp_new].iloc[:,2].values[0]
+        if '_time' in tmp:
+            if len(shipping_db[tmp_new+'_time']) > 0:
+                if shipping_db[tmp_new+'_time'][-1] == new_time:
+                    break
+
+        if '_time' in tmp:
+            shipping_db[tmp_new+'_time'].append(df1[df1['指數名稱'] == tmp_new].iloc[:,2].values[0])
+        else:
+            shipping_db[tmp_new].append(df1[df1['指數名稱'] == tmp_new].iloc[:,1].values[0])
+        
+    path_update = 'auto/data/7_上海航運交易所_全球主幹航線綜合準班率指數.json'
+    json_data = json.dumps(shipping_db)
+    with open(path_update, "w") as json_file:
+        json_file.write(json_data)
+
+    # 7_2 database
+
+    
+
+    message = f'更新完成: 所有航運數據'
+    return render_template('update_product.html', message = message)
+
 
 
 
