@@ -450,11 +450,16 @@ def get_data7_2():
     driver.maximize_window()
 
     rows = driver.find_elements(By.XPATH, '//*[@id="right"]/table')[0].text.split('\n')
+    text = driver.find_elements(By.XPATH, '//*[@id="right"]/div[2]')[0].text
+    date_pattern = r"\d{4}-\d{2}"
+    date_match = re.search(date_pattern, text).group()
+
     new_rows = []
     for i in range(4,len(rows)):
         tmp = rows[i].split(' ')
-        new_rows.append({'排名': tmp[0], '港口': tmp[1], '准班率(%)':tmp[2], '挂靠数':tmp[4], '班期综合服务水平': tmp[6], '在港时间(天)':tmp[7], '在泊時間(天)':tmp[8]})
-    
+        new_rows.append({'港口': tmp[1], '准班率(%)':tmp[2], '挂靠数':tmp[4], '班期综合服务水平': tmp[6], '在港时间(天)':tmp[7], '在泊時間(天)':tmp[8],
+                        '港口_time':date_match, '准班率(%)_time':date_match, '挂靠数_time':date_match, '班期综合服务水平_time':date_match, '在港时间(天)_time':date_match, '在泊時間(天)_time':date_match})
+
     df = pd.DataFrame(new_rows)
     return df
 
@@ -466,10 +471,12 @@ def get_data7_3():
     rows = tables[0].find_all('tr')
 
     data = []
-    for i in range(0,len(rows)):
-        data.append([header.get_text() for header in rows[i].find_all('td')])
+    # [header.get_text() for header in rows[1].find_all('td')][0:2]
+    for i in range(1,len(rows)):
+        data.append([header.get_text() for header in rows[i].find_all('td')][0:2])
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data, columns=['指數名稱','指數'])
+    df['指數_time'] = soup.find_all('div', {'class':'title2'})[0].text.split()[1]
     return df
 
 def get_data7_4():
@@ -481,8 +488,11 @@ def get_data7_4():
     rows = tables[0].find_all('tr')
 
     data = []
-    for i in range(0,len(rows)):
-        data.append([header.get_text() for header in rows[i].find_all('td')])
+    for i in range(1,len(rows)):
+        data.append([header.get_text() for header in rows[i].find_all('td')][0:2])
+
+    df = pd.DataFrame(data, columns = ['指數名稱', '指數'])
+    df['指數_time'] = soup.find_all('div', {'class':'title2'})[0].text.split()[1]
 
     df = pd.DataFrame(data)
     return df
@@ -665,7 +675,7 @@ def get_data_10(airport):
     return df
     
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
 
     # # 1: 進出口總值
     # GEO = '中國大陸'
@@ -720,15 +730,15 @@ def get_data_10(airport):
 
     # 7-2: 港口班輪準確率
     # df = get_data7_2()
-    # df.to_excel('new_data/7_上海航運交易所_港口班輪準確率.xlsx', header = 0, index = 0)
+    # df.to_excel('new_data/7_上海航運交易所_港口班輪準確率.xlsx', index = 0)
 
     # 7-3: 一帶一路航貿指數
     # df = get_data7_3()
-    # df.to_excel('new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', header = 0, index = 0)
+    # df.to_excel('new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index = 0)
 
     # 7-4: 一帶一路貿易額指數
-    # df = get_data7_4()
-    # df.to_excel('new_data/7_上海航運交易所_一帶一路貿易額指數.xlsx', header = 0, index = 0)
+    df = get_data7_4()
+    df.to_excel('new_data/7_上海航運交易所_一帶一路貿易額指數.xlsx', header = 0, index = 0)
 
     # 7-5: 集裝箱海運量指數
     # df = get_data7_5()

@@ -31,6 +31,7 @@ def home():
 
 @app.route('/product_analysis', methods=['GET', 'POST'])
 def product_analysis():
+    print('重新讀取頁面')
     '''進出口總額'''
     df = pd.read_excel('auto/data/1_中國大陸_進出口總值(美元).xlsx', index_col=0)
     df = df.fillna('Null')
@@ -82,13 +83,7 @@ def product_analysis():
     jsonFile = open('auto/data/7_上海航運交易所_航運數據.json','r')
     f =  jsonFile.read()   # 要先使用 read 讀取檔案
     df7 = json.loads(f)
-    # df7_1_tmp = json.loads(f)['全球主幹航線綜合準班率指數']      # 再使用 loads
-    # df7_1_labels = list([tmp for tmp in df7_1_tmp.keys() if '_time' not in tmp])
-    # df7_1_indexs = list([df7_1_tmp[tmp] for tmp in df7_1_tmp.keys() if '_time' in tmp][0])
-    # df7_1 = {}
-    # for tmp in df7_1_labels:
-    #     df7_1[tmp] = df7_1_tmp[tmp]
-    # jsonFile.close()
+    jsonFile.close()
 
 
 
@@ -213,40 +208,114 @@ def update_data7():
     df1.to_excel(f'{filepath}7_上海航運交易所_全球主幹航線綜合準班率指數.xlsx', index = 0)
     df2.to_excel(f'{filepath}7_上海航運交易所_全球主幹航線到離港與收發獲準班率指數.xlsx', index = 0)
 
-    # 7_1 database
-    jsonFile = open('auto/data/7_上海航運交易所_全球主幹航線綜合準班率指數.json','r')
+    filepath = 'auto/new_data/'
+    df1 = pd.read_excel(f'{filepath}7_上海航運交易所_全球主幹航線綜合準班率指數.xlsx')
+    df2 = pd.read_excel(f'{filepath}7_上海航運交易所_全球主幹航線到離港與收發獲準班率指數.xlsx')
+    df2_1 = df2.iloc[:,[0,1,3]]
+    df2_2 = df2.iloc[:,[0,2,4]]
+
+    df7_2 = get_data7_2()
+    df7_2.to_excel('new_data/7_上海航運交易所_港口班輪準確率.xlsx', index = 0)
+    df7_2 = pd.read_excel('auto/new_data/7_上海航運交易所_港口班輪準確率.xlsx').astype(str)
+    df7_2_1 = df7_2.iloc[:,[0,1,7]]
+    df7_2_2 = df7_2.iloc[:,[0,2,8]]
+    df7_2_3 = df7_2.iloc[:,[0,3,9]]
+    df7_2_4 = df7_2.iloc[:,[0,4,10]]
+    df7_2_5 = df7_2.iloc[:,[0,5,11]]
+
+    df7_3 = get_data7_3()
+    df7_3.to_excel('new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index = 0)
+    df7_3 = pd.read_excel('auto/new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index_col = 0).astype(str)
+
+    df7_4 = get_data7_4()
+    df7_4.to_excel('new_data/7_上海航運交易所_一帶一路貿易額指數.xlsx', index = 0)
+    df7_4 = pd.read_excel('auto/new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index_col = 0).astype(str)
+    
+
+
+    jsonFile = open('auto/data/7_上海航運交易所_航運數據.json','r')
     f =  jsonFile.read()   # 要先使用 read 讀取檔案
     shipping_db = json.loads(f)      # 再使用 loads
+    # shipping_db = {}
     jsonFile.close()
 
     df1_keys = list(df1['指數名稱'].values+'_time')+list(df1['指數名稱'].values)
-    shipping_keys = df1_keys
-    for tmp in shipping_keys:
-        # 創立
-        if tmp not in shipping_db.keys():
-            shipping_db[tmp] = []
-        
-        # 防止重複增加
-        tmp_new = tmp.split('_')[0]
-        new_time = df1[df1['指數名稱'] == tmp_new].iloc[:,2].values[0]
-        if '_time' in tmp:
-            if len(shipping_db[tmp_new+'_time']) > 0:
-                if shipping_db[tmp_new+'_time'][-1] == new_time:
-                    break
+    df2_keys = list(df2['航線'].values+'_time')+list(df2['航線'].values)
+    df7_2_keys = list(df7_2['港口'].values+'_time')+list(df7_2['港口'].values)
+    df7_3_keys = list(df7_3['指數名稱'].values+'_time')+list(df7_3['指數名稱'].values)
 
-        if '_time' in tmp:
-            shipping_db[tmp_new+'_time'].append(df1[df1['指數名稱'] == tmp_new].iloc[:,2].values[0])
-        else:
-            shipping_db[tmp_new].append(df1[df1['指數名稱'] == tmp_new].iloc[:,1].values[0])
-        
-    path_update = 'auto/data/7_上海航運交易所_全球主幹航線綜合準班率指數.json'
+
+
+    def update_db(update_keys, update_data, shipping_db, data_type):
+        if data_type == '7_1':
+            query = '指數名稱'
+            column = '全球主幹航線綜合準班率指數'
+        elif data_type == '7_1_1':
+            query = '航線'
+            column = '全球主幹航線到離港準班率指數'
+        elif data_type == '7_1_2':
+            query = '航線'
+            column = '全球主幹航線收發貨準班率指數'
+        elif data_type == '7_2_1':
+            query = '港口'
+            column = '港口班輪準確率:準班率'
+        elif data_type == '7_2_2':
+            query = '港口'
+            column = '港口班輪準確率:掛靠數'
+        elif data_type == '7_2_3':
+            query = '港口'
+            column = '港口班輪準確率:班期综合服务水平'
+        elif data_type == '7_2_4':
+            query = '港口'
+            column = '港口班輪準確率:在港时间(天)'
+        elif data_type == '7_2_5':
+            query = '港口'
+            column = '港口班輪準確率:在泊時間(天)'
+        elif data_type == '7_3':
+            query = '指數名稱'
+            column = '一帶一路航貿指數'   
+
+        # 創立
+        if column not in shipping_db.keys():
+            shipping_db[f'{column}'] = {}
+
+
+        shipping_keys = update_keys
+        for tmp in shipping_keys:
+            # 創立
+            if tmp not in shipping_db[f'{column}'].keys():
+                shipping_db[f'{column}'][tmp] = []
+            
+            # 防止重複增加
+            tmp_new = tmp.split('_')[0]
+            
+            # new_time = update_data[update_data[f'{query}'] == tmp_new].iloc[:,2].values[0]
+            # if '_time' in tmp:
+            #     if len(shipping_db[f'{column}'][tmp_new+'_time']) > 0:
+            #         if shipping_db[f'{column}'][tmp_new+'_time'][-1] == new_time:
+            #             break
+
+            if '_time' in tmp:
+                shipping_db[f'{column}'][tmp_new+'_time'].append(update_data[update_data[f'{query}'] == tmp_new].iloc[:,2].values[0])
+            else:
+                shipping_db[f'{column}'][tmp_new].append(update_data[update_data[f'{query}'] == tmp_new].iloc[:,1].values[0])
+        print(f'航運資料庫更新完成{query}:{column}')
+        return shipping_db
+
+    shipping_db = update_db(update_keys = df1_keys, update_data = df1, shipping_db = shipping_db, data_type = '7_1')
+    shipping_db = update_db(update_keys = df2_keys, update_data = df2_1, shipping_db = shipping_db, data_type = '7_1_1')
+    shipping_db = update_db(update_keys = df2_keys, update_data = df2_2, shipping_db = shipping_db, data_type = '7_1_2')
+    shipping_db = update_db(update_keys = df7_2_keys, update_data = df7_2_1, shipping_db = shipping_db, data_type = '7_2_1')
+    shipping_db = update_db(update_keys = df7_2_keys, update_data = df7_2_2, shipping_db = shipping_db, data_type = '7_2_2')
+    shipping_db = update_db(update_keys = df7_2_keys, update_data = df7_2_3, shipping_db = shipping_db, data_type = '7_2_3')
+    shipping_db = update_db(update_keys = df7_2_keys, update_data = df7_2_4, shipping_db = shipping_db, data_type = '7_2_4')
+    shipping_db = update_db(update_keys = df7_2_keys, update_data = df7_2_5, shipping_db = shipping_db, data_type = '7_2_5')
+    shipping_db = update_db(update_keys = df7_3_keys, update_data = df7_3, shipping_db = shipping_db, data_type = '7_3')
+
+    path_update = 'auto/data/7_上海航運交易所_航運數據.json'
     json_data = json.dumps(shipping_db)
     with open(path_update, "w") as json_file:
         json_file.write(json_data)
-
-    # 7_2 database
-
-    
 
     message = f'更新完成: 所有航運數據'
     return render_template('update_product.html', message = message)

@@ -177,8 +177,16 @@
         </p>
     </form>
     <div class="btn-group" role="group" aria-label="Basic example">
-        <button type="button" class="btn btn-primary" data-value="全球主幹航線綜合準班率指數">全球主幹航線綜合準班率指數</button>
-        <button type="button" class="btn btn-primary">全球主幹航線到離港與收發獲準班率指數</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "全球主幹航線綜合準班率指數"}'>全球主幹航線綜合準班率指數</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "全球主幹航線到離港準班率指數"}'>全球主幹航線到離港準班率指數</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "全球主幹航線收發貨準班率指數"}'>全球主幹航線收發貨準班率指數</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "港口班輪準確率:準班率"}'>港口班輪準確率:準班率</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "港口班輪準確率:掛靠數"}'>港口班輪準確率:掛靠數</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "港口班輪準確率:班期综合服务水平"}'>港口班輪準確率:班期综合服务水平</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "港口班輪準確率:在港时间(天)"}'>港口班輪準確率:在港时间(天)</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "港口班輪準確率:在泊時間(天)"}'>港口班輪準確率:在泊時間(天)</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "一帶一路航貿指數"}'>一帶一路航貿指數</button>
+        
         <!-- <button type="button" class="btn btn-primary">全球主幹航線到離港與收發獲準班率指數</button>
         <button type="button" class="btn btn-primary">全球主幹航線綜合準班率指數</button>
         <button type="button" class="btn btn-primary">海上絲綢之路運價指數</button>
@@ -488,29 +496,61 @@
 
     <!-- data 7 -->
     <script>
-        function drawChart() {
-            // Retrieve the data passed from the backend
-            console.log(df7)
-            // const df7_1_indexs = {{ df7_1_indexs | safe }};
-            // const df7_1_labels = {{ df7_1_labels | safe }};
-            // const df7_1 = {{ df7_1 | safe }};  // Ensure df7_1 is structured as an object or array
+        function drawChart(df7_value) {
+            // Initialize arrays for storing label and value, but store indexArray only once
+            const indexArray = [];
+            const labelArray = [];
+            const valueArray = [];
     
-            // Log data to check structure (for debugging)
-            console.log("Index Labels: ", df7_1_indexs);
-            console.log("Labels: ", df7_1_labels);
-            console.log("Data: ", df7_1);
+            let indexStored = false;  // Flag to ensure we only store indexArray once
+    
+            // Retrieve the data passed from the backend
+            data_type = df7_value['index'];
+            const df7 = {{df7 | safe}}[data_type];
+    
+            // Traverse through the data object
+            for (const key in df7) {
+                if (!key.includes('_time')) {
+                    // If the key doesn't contain '_time', it's a label
+                    const label = key;
+                    const values = df7[key];
+    
+                    // Find the corresponding _time key
+                    const timeKey = `${label}_time`;
+                    const timeValues = df7[timeKey];
+    
+                    if (timeValues && !indexStored) {
+                        // If _time key is found and indexArray is not yet stored, store it
+                        timeValues.forEach(timeValue => indexArray.push(timeValue));
+                        indexStored = true;  // Mark indexArray as stored
+                    }
+    
+                    // Store the label and values for charting
+                    values.forEach(value => {
+                        labelArray.push(label);
+                        valueArray.push(value);
+                    });
+                }
+            }
+    
+            // Log the arrays to check their structure
+            console.log("Index Array: ", indexArray);
+            console.log("Label Array: ", labelArray);
+            console.log("Value Array: ", valueArray);
     
             // Get the chart context
             const sc = document.getElementById('shipping_chart').getContext('2d');
     
             // Prepare datasets for each label with corresponding data
-            const datasets = df7_1_labels.map(label => ({
-                label: label,
-                data: df7_1[label],  // Access the specific data for each label
-                fill: false,
-                borderColor: getRandomColor(),
-                tension: 0.1
-            }));
+            const datasets = [...new Set(labelArray)].map(label => {
+                return {
+                    label: label,
+                    data: valueArray.filter((_, i) => labelArray[i] === label),  // Filter values based on the label
+                    fill: false,
+                    borderColor: getRandomColor(),
+                    tension: 0.1
+                };
+            });
     
             // Function to generate random colors for each line
             function getRandomColor() {
@@ -531,8 +571,8 @@
             window.shippingChart = new Chart(sc, {
                 type: 'line',
                 data: {
-                    labels: df7_1_indexs, // X-axis values (time periods)
-                    datasets: datasets    // Datasets for each label
+                    labels: indexArray, // X-axis values (time periods), stored only once
+                    datasets: datasets  // Datasets for each label
                 },
                 options: {
                     responsive: true,
@@ -562,11 +602,13 @@
         // Add event listener for button clicks to trigger the chart generation
         document.querySelectorAll('.btn').forEach(button => {
             button.addEventListener('click', function () {
-                const df7_value = JSON.parse(this.getAttribute('data-value'));
+                const df7_value = JSON.parse(this.getAttribute('name'));
                 drawChart(df7_value);  // Call drawChart on button click
             });
         });
     </script>
+    
+    
     
 
     <!-- <script>
