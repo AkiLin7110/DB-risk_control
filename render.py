@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, redirect, url_for, jsonify
-from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data9_1, get_data9_2, get_data_10
+from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10
 import json
 import pandas as pd
 from operator import itemgetter
@@ -215,8 +215,8 @@ def update_data7():
     df2_2 = df2.iloc[:,[0,2,4]]
 
     df7_2 = get_data7_2()
-    df7_2.to_excel('new_data/7_上海航運交易所_港口班輪準確率.xlsx', index = 0)
-    df7_2 = pd.read_excel('auto/new_data/7_上海航運交易所_港口班輪準確率.xlsx').astype(str)
+    df7_2.to_excel(f'{filepath}7_上海航運交易所_港口班輪準確率.xlsx', index = 0)
+    df7_2 = pd.read_excel(f'{filepath}7_上海航運交易所_港口班輪準確率.xlsx').astype(str)
     df7_2_1 = df7_2.iloc[:,[0,1,7]]
     df7_2_2 = df7_2.iloc[:,[0,2,8]]
     df7_2_3 = df7_2.iloc[:,[0,3,9]]
@@ -224,13 +224,21 @@ def update_data7():
     df7_2_5 = df7_2.iloc[:,[0,5,11]]
 
     df7_3 = get_data7_3()
-    df7_3.to_excel('new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index = 0)
-    df7_3 = pd.read_excel('auto/new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index_col = 0).astype(str)
+    df7_3.to_excel(f'{filepath}/7_上海航運交易所_一帶一路航貿指數.xlsx', index = 0)
+    df7_3 = pd.read_excel(f'{filepath}/7_上海航運交易所_一帶一路航貿指數.xlsx').astype(str)
 
     df7_4 = get_data7_4()
-    df7_4.to_excel('new_data/7_上海航運交易所_一帶一路貿易額指數.xlsx', index = 0)
-    df7_4 = pd.read_excel('auto/new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index_col = 0).astype(str)
-    
+    df7_4.to_excel(f'{filepath}/7_上海航運交易所_一帶一路貿易額指數.xlsx', index = 0)
+    df7_4 = pd.read_excel(f'{filepath}/7_上海航運交易所_一帶一路貿易額指數.xlsx').astype(str)
+
+    df7_5 = get_data7_5()
+    df7_5.to_excel(f'{filepath}/7_上海航運交易所_集裝箱海運量指數.xlsx')
+    df7_5 = pd.read_excel('auto/new_data/7_上海航運交易所_集裝箱海運量指數.xlsx', index_col= 0).astype(str)
+
+    df7_6 = get_data7_6()
+    df7_6.to_excel(f'{filepath}/7_上海航運交易所_海上絲綢之路運價指數.xlsx')
+    df7_6 = pd.read_excel('auto/new_data/7_上海航運交易所_海上絲綢之路運價指數.xlsx', index_col= 0).astype(str)
+
 
 
     jsonFile = open('auto/data/7_上海航運交易所_航運數據.json','r')
@@ -243,6 +251,9 @@ def update_data7():
     df2_keys = list(df2['航線'].values+'_time')+list(df2['航線'].values)
     df7_2_keys = list(df7_2['港口'].values+'_time')+list(df7_2['港口'].values)
     df7_3_keys = list(df7_3['指數名稱'].values+'_time')+list(df7_3['指數名稱'].values)
+    df7_4_keys = list(df7_4['指數名稱'].values+'_time')+list(df7_4['指數名稱'].values)
+    df7_5_keys = list(df7_5['指數名稱'].values+'_time')+list(df7_5['指數名稱'].values)
+    df7_6_keys = list(df7_6['指數名稱'].values+'_time')+list(df7_6['指數名稱'].values)
 
 
 
@@ -273,7 +284,17 @@ def update_data7():
             column = '港口班輪準確率:在泊時間(天)'
         elif data_type == '7_3':
             query = '指數名稱'
-            column = '一帶一路航貿指數'   
+            column = '一帶一路航貿指數'  
+        elif data_type == '7_4':
+            query = '指數名稱'
+            column = '一帶一路貿易額指數'
+        elif data_type == '7_5':
+            query = '指數名稱'
+            column = '集裝箱海運量指數'
+        elif data_type == '7_6':
+            query = '指數名稱'
+            column = '海上絲綢之路運價指數'
+            
 
         # 創立
         if column not in shipping_db.keys():
@@ -289,11 +310,11 @@ def update_data7():
             # 防止重複增加
             tmp_new = tmp.split('_')[0]
             
-            # new_time = update_data[update_data[f'{query}'] == tmp_new].iloc[:,2].values[0]
-            # if '_time' in tmp:
-            #     if len(shipping_db[f'{column}'][tmp_new+'_time']) > 0:
-            #         if shipping_db[f'{column}'][tmp_new+'_time'][-1] == new_time:
-            #             break
+            new_time = update_data[update_data[f'{query}'] == tmp_new].iloc[:,2].values[0]
+            if '_time' in tmp:
+                if len(shipping_db[f'{column}'][tmp_new+'_time']) > 0:
+                    if shipping_db[f'{column}'][tmp_new+'_time'][-1] == new_time:
+                        break
 
             if '_time' in tmp:
                 shipping_db[f'{column}'][tmp_new+'_time'].append(update_data[update_data[f'{query}'] == tmp_new].iloc[:,2].values[0])
@@ -311,6 +332,9 @@ def update_data7():
     shipping_db = update_db(update_keys = df7_2_keys, update_data = df7_2_4, shipping_db = shipping_db, data_type = '7_2_4')
     shipping_db = update_db(update_keys = df7_2_keys, update_data = df7_2_5, shipping_db = shipping_db, data_type = '7_2_5')
     shipping_db = update_db(update_keys = df7_3_keys, update_data = df7_3, shipping_db = shipping_db, data_type = '7_3')
+    shipping_db = update_db(update_keys = df7_4_keys, update_data = df7_4, shipping_db = shipping_db, data_type = '7_4')
+    shipping_db = update_db(update_keys = df7_5_keys, update_data = df7_5, shipping_db = shipping_db, data_type = '7_5')
+    shipping_db = update_db(update_keys = df7_6_keys, update_data = df7_6, shipping_db = shipping_db, data_type = '7_6')
 
     path_update = 'auto/data/7_上海航運交易所_航運數據.json'
     json_data = json.dumps(shipping_db)
@@ -320,7 +344,32 @@ def update_data7():
     message = f'更新完成: 所有航運數據'
     return render_template('update_product.html', message = message)
 
-
+@app.route('/update/get_data8', methods=['GET', 'POST'])
+def update_data8():
+    filepath = 'auto/new_data/'
+    # Retrieve the query from the form submission
+    # querys = request.form.get('query', 'fanuc')  # Default to 'fanuc' if no query provided
+    querys = ""
+    if querys == "":
+        querys = ['syntec','fanuc','siemens']
+    forums = ['Machinists', 'robotics']
+    
+    # Call functions with the dynamic query
+    for query in querys:
+        df = get_data8_1(query, forums)
+        df.to_excel(f'{filepath}8_競品分析_{query}.xlsx', index=False)
+        
+        filename = f'{filepath}8_競品分析_{query}.xlsx'
+        output = get_data8_2(filename)
+        names = ['questions','comments']
+        for i in range(0,len(output)):
+            with open(f"{filepath}8_{query}_{names[i]}.txt","w", encoding = 'UTF-8') as file:
+                file.write(output[i])
+        message = f'更新完成: 文字雲資料 for {query}'
+    
+    get_data8_3()
+    
+    return render_template('update_product.html', message=message)
 
 
 if __name__ == '__main__':

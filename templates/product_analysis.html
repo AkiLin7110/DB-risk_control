@@ -98,7 +98,7 @@
     <form method='post' action={{ url_for('update_data1') }}>
         <p>
         <button type='submit'>更新資料</button>
-    </p>
+        </p>
     </form>
 
     <div style="display: flex; justify-content: space-between;">
@@ -186,17 +186,40 @@
         <button type="button" class="btn btn-primary" name ='{"index": "港口班輪準確率:在港时间(天)"}'>港口班輪準確率:在港时间(天)</button>
         <button type="button" class="btn btn-primary" name ='{"index": "港口班輪準確率:在泊時間(天)"}'>港口班輪準確率:在泊時間(天)</button>
         <button type="button" class="btn btn-primary" name ='{"index": "一帶一路航貿指數"}'>一帶一路航貿指數</button>
-        
-        <!-- <button type="button" class="btn btn-primary">全球主幹航線到離港與收發獲準班率指數</button>
-        <button type="button" class="btn btn-primary">全球主幹航線綜合準班率指數</button>
-        <button type="button" class="btn btn-primary">海上絲綢之路運價指數</button>
-        <button type="button" class="btn btn-primary">港口班輪準確率</button>
-        <button type="button" class="btn btn-primary">集裝箱海運量指數</button> -->
+        <button type="button" class="btn btn-primary" name ='{"index": "一帶一路貿易額指數"}'>一帶一路貿易額指數</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "集裝箱海運量指數"}'>集裝箱海運量指數</button>
+        <button type="button" class="btn btn-primary" name ='{"index": "海上絲綢之路運價指數"}'>海上絲綢之路運價指數</button>
     </div>
     
     <div style = "width:70%">
         <canvas id="shipping_chart"></canvas>
     </div>
+
+    <h2>文字雲</h2>
+    <form method='post' action="{{ url_for('update_data8') }}">
+        <p>
+            <label for="query">Enter Query:</label>
+            <input type="text" name="query" id="query">
+        </p>
+        <p>
+            <button type='submit'>更新資料</button>
+        </p>
+    </form>
+    
+    <div class="btn-group" role="group" aria-label="Company Selection">
+        <button type="button" class="btn btn-primary" onclick="setCompany('fanuc', this)">Fanuc</button>
+        <button type="button" class="btn btn-primary" onclick="setCompany('siemens', this)">Siemens</button>
+        <button type="button" class="btn btn-primary" onclick="setCompany('syntec', this)">Syntec</button>
+    </div>
+    
+    <div class="btn-group" role="group" aria-label="Index Selection">
+        <button type="button" class="btn btn-primary" onclick="setIndex('title', this)">Title</button>
+        <button type="button" class="btn btn-primary" onclick="setIndex('subtitle', this)">Subtitle</button>
+        <button type="button" class="btn btn-primary" onclick="setIndex('content', this)">Content</button>
+    </div>
+    
+    <!-- Initially hidden image element -->
+    <img id="dynamicImage" style="display: none;" alt="公司新註冊商標">
 
 
 
@@ -481,18 +504,57 @@
         }
     </script>
 
-    <script>
-        // Function to change color on click
+    <!-- <script>
+        // Function to toggle button color on click
         const buttons = document.querySelectorAll('.btn');
         buttons.forEach(button => {
             button.addEventListener('click', function() {
-                // Reset all buttons to the original color
-                buttons.forEach(btn => btn.classList.remove('btn-secondary'));
-                // Change the clicked button color
-                this.classList.add('btn-secondary');
+                // Toggle button color between primary and secondary
+                this.classList.toggle('btn-secondary');
+                this.classList.toggle('btn-primary');
             });
         });
+    </script> -->
+    <script>
+        // 航運數據 (Shipping Data) Buttons - Only one button can be selected at a time
+        const shippingButtons = document.querySelectorAll('.btn-group[aria-label="Basic example"] .btn');
+        shippingButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Deselect all buttons in this group
+                shippingButtons.forEach(btn => btn.classList.remove('btn-secondary', 'sortable-selected'));
+                // Select the clicked button
+                this.classList.add('btn-secondary', 'sortable-selected');
+    
+                // Trigger the draw chart function with the selected data
+                const df7_value = JSON.parse(this.getAttribute('name'));
+                drawChart(df7_value);
+            });
+        });
+    
+        // // 文字雲 (Word Cloud) Buttons - Allow multiple selections across rows, only one per row
+        // function toggleSelection(buttonGroupClass, button) {
+        //     // Deselect all buttons in the same row (or button group)
+        //     document.querySelectorAll(`.${buttonGroupClass} .btn`).forEach(btn => btn.classList.remove('btn-secondary'));
+        //     // Select the clicked button
+        //     button.classList.add('btn-secondary');
+        // }
+    
+        // // Word Cloud Company and Index Buttons
+        // document.querySelectorAll('.btn-group[aria-label="Company Selection"] .btn').forEach(button => {
+        //     button.addEventListener('click', function() {
+        //         toggleSelection('Company Selection', this);
+        //         setCompany(this.innerText.toLowerCase());
+        //     });
+        // });
+    
+        // document.querySelectorAll('.btn-group[aria-label="Index Selection"] .btn').forEach(button => {
+        //     button.addEventListener('click', function() {
+        //         toggleSelection('Index Selection', this);
+        //         setIndex(this.innerText.toLowerCase());
+        //     });
+        // });
     </script>
+    
 
     <!-- data 7 -->
     <script>
@@ -506,6 +568,7 @@
     
             // Retrieve the data passed from the backend
             data_type = df7_value['index'];
+            console.log(data_type)
             const df7 = {{df7 | safe}}[data_type];
     
             // Traverse through the data object
@@ -608,6 +671,72 @@
         });
     </script>
     
+    <script>
+        // 定義變數來存儲已選的公司和索引資訊
+        let selectedCompany = null;
+        let selectedIndex = null;
+    
+        // 切換選擇狀態的函數，允許第二次點擊取消選擇
+        function toggleSelection(buttonGroupClass, button, setFunction) {
+            // 判斷按鈕是否已選中
+            const isSelected = button.classList.contains('btn-secondary');
+            
+            // 清除該行所有按鈕的選中狀態
+            document.querySelectorAll(`.btn-group[aria-label="${buttonGroupClass}"] .btn`).forEach(btn => btn.classList.remove('btn-secondary'));
+            
+            if (!isSelected) {
+                // 如果按鈕尚未選中，則選中並執行設定函數
+                button.classList.add('btn-secondary');
+                setFunction(button.innerText.toLowerCase());
+            } else {
+                // 如果按鈕已選中，則取消選中並移除相應的資訊
+                setFunction(null);
+            }
+    
+            // 更新圖像
+            updateImage();
+        }
+    
+        // 公司 (Company) 按鈕群組的事件綁定
+        document.querySelectorAll('.btn-group[aria-label="Company Selection"] .btn').forEach(button => {
+            button.addEventListener('click', function() {
+                toggleSelection('Company Selection', this, setCompany);
+            });
+        });
+    
+        // 索引 (Index) 按鈕群組的事件綁定
+        document.querySelectorAll('.btn-group[aria-label="Index Selection"] .btn').forEach(button => {
+            button.addEventListener('click', function() {
+                toggleSelection('Index Selection', this, setIndex);
+            });
+        });
+    
+        // 設定公司選擇
+        function setCompany(company) {
+            selectedCompany = company;
+        }
+    
+        // 設定索引選擇
+        function setIndex(index) {
+            selectedIndex = index;
+        }
+    
+        // 更新圖像的函數，僅在公司和索引都已選擇時觸發
+        function updateImage() {
+            const imgElement = document.getElementById('dynamicImage');
+            
+            if (selectedCompany && selectedIndex) {
+                // 組合圖像路徑並顯示
+                const basePath = "{{ url_for('static', filename='') }}";
+                const imgPath = `${basePath}${selectedCompany}_${selectedIndex}.png`;
+                imgElement.src = imgPath;
+                imgElement.style.display = 'block';
+            } else {
+                // 隱藏圖像元素
+                imgElement.style.display = 'none';
+            }
+        }
+    </script>
     
     
 

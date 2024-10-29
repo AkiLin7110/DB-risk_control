@@ -17,6 +17,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
+from wordcloud import WordCloud, STOPWORDS
+import matplotlib.pyplot as plt
 
 import re
 
@@ -494,7 +496,6 @@ def get_data7_4():
     df = pd.DataFrame(data, columns = ['指數名稱', '指數'])
     df['指數_time'] = soup.find_all('div', {'class':'title2'})[0].text.split()[1]
 
-    df = pd.DataFrame(data)
     return df
 
 def get_data7_5():
@@ -506,12 +507,16 @@ def get_data7_5():
 
     data = []
     for i in range(2,len(rows)):
-        tmp = rows[i].split(' ')
-        if len(tmp)<4:
+        tmp = rows[i].split(' ')[:-1]
+        if len(tmp)<3:
             tmp.insert(1,'')
         data.append(tmp)
-    
-    df = pd.DataFrame(data, columns=['指數','權重', '本期', '與上期比漲跌'])
+
+    df = pd.DataFrame(data, columns=['指數名稱','權重', '指數'])
+    df = df[['指數名稱','指數']]
+    df['指數_time'] = driver.find_elements(By.XPATH, '//*[@id="right"]/div[3]')[0].text.split()[2]
+    df['指數名稱'].iloc[2:9] = df['指數名稱'].iloc[2:9]+'-出口'
+    df['指數名稱'].iloc[10:17] = df['指數名稱'].iloc[10:17]+'-進口'
     return df
 
 def get_data7_6():
@@ -523,14 +528,22 @@ def get_data7_6():
 
     data = []
     for i in range(2,len(rows)):
-        tmp = rows[i].split(' ')
-        if len(tmp)<4:
+        tmp = rows[i].split(' ')[:-1]
+        if len(tmp)<3:
             tmp.insert(1,'')
         data.append(tmp)
-    
-    df = pd.DataFrame(data, columns=['指數','權重', '本期', '與上期比漲跌'])
+
+    df = pd.DataFrame(data, columns=['指數名稱','權重', '指數'])
+    df = df[['指數名稱','指數']]
+    df['指數名稱'].iloc[2:7] = df['指數名稱'].iloc[2:7]+':進口'
+    df['指數名稱'].iloc[8:13] = df['指數名稱'].iloc[8:13]+':出口'
+    df['指數_time'] = driver.find_elements(By.XPATH, '//*[@id="right"]/div[3]')[0].text.split()[2]
 
     return df
+
+def scroll_down(driver):
+    elem = driver.find_element(By.TAG_NAME, "html")
+    elem.send_keys(Keys.END)
 
 def get_data8_1(query:str, forums:list):
     '''
@@ -539,9 +552,6 @@ def get_data8_1(query:str, forums:list):
     '''
     driver = webdriver.Chrome()
     driver.maximize_window()
-    def scroll_down():
-        elem = driver.find_element(By.TAG_NAME, "html")
-        elem.send_keys(Keys.END)
     
     # 獲得 title & 網址
     results = []
@@ -550,6 +560,7 @@ def get_data8_1(query:str, forums:list):
         i = 0
         print(f'{forum}')
         driver.get(f'https://www.reddit.com/r/{forum}/search/?q={query}&type=link&cId=fc7a58b4-f24e-42e5-b633-51c75a99c047&iId=46e77d77-e6e8-4434-94f3-4dcbed0ada05')
+        time.sleep(2)
         while signal:
             scroll_down()
             time.sleep(2)
@@ -589,14 +600,21 @@ def get_data8_2(filename:str):
 
         all_questions.append(question)
         
-        comments = driver.find_elements(By.XPATH, '//*[@id="-post-rtjson-content"]')
+        pre_count = 0
+        while 1:
+            scroll_down(driver = driver)
+            time.sleep(1)
+            comments = driver.find_elements(By.XPATH, '//*[@id="-post-rtjson-content"]')
+            if pre_count == len(comments):
+                break
+            pre_count = len(comments)
         comment = ''
         for tmp in comments:
             tmp = tmp.text.split('\n')
             for j  in range(len(tmp)):
                 comment += tmp[j]
         all_comments.append(comment)
-    
+
     all_questions_paragraph = ''
     for i in range(0,len(all_questions)):
         tmp = all_questions[i]
@@ -605,11 +623,49 @@ def get_data8_2(filename:str):
 
     all_comments_paragraph = ''
     for i in range(0,len(all_comments)):
-        tmp = all_questions[i]
+        tmp = all_comments[i]
         for j in range(0,len(tmp)):
             all_comments_paragraph += tmp[j]
 
     return [all_questions_paragraph, all_comments_paragraph]
+
+def get_data8_3():
+    '''文字雲'''
+    querys = ['syntec','fanuc','siemens']
+    sources = ['title', 'subtitle', 'content']
+
+    for query in querys:
+        results = pd.read_excel(f'auto/new_data/8_競品分析_{query}.xlsx')
+        for source in sources:
+            text1 = ''
+            text2 = ''
+            text3 = ''
+            text = ''
+            if 'title' in sources:
+                text = pd.DataFrame(results)[f'title'].values
+                for tmp in text:
+                    text1+=tmp
+            if 'subtitle' in sources:
+                f = open(f'auto/new_data/8_{query}_questions.txt')
+                text2 = f.read()
+                f.close()
+            if 'content' in sources:
+                f = open(f'auto/new_data/8_{query}_comments.txt')
+                text3 = f.read()
+                f.close()
+
+            texts = text1 + text2 + text3 
+            wordcloud = WordCloud(scale=5, colormap='coolwarm', background_color='white').generate(texts)
+            # wordcloud = WordCloud().generate(texts)
+
+            # 繪圖
+            plt.figure(figsize=(20, 9), dpi=100)
+            plt.imshow(wordcloud, interpolation="bilinear")
+            plt.axis("off")
+
+            # Save the figure with no extra white space around it
+            plt.savefig(f'static/{query}_{source}.png', bbox_inches='tight', pad_inches=0)
+    return '文字雲圖片更新完成'
 
 def get_data9_1(query):
     '''
@@ -675,7 +731,7 @@ def get_data_10(airport):
     return df
     
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
     # # 1: 進出口總值
     # GEO = '中國大陸'
@@ -737,8 +793,8 @@ if __name__ == '__main__':
     # df.to_excel('new_data/7_上海航運交易所_一帶一路航貿指數.xlsx', index = 0)
 
     # 7-4: 一帶一路貿易額指數
-    df = get_data7_4()
-    df.to_excel('new_data/7_上海航運交易所_一帶一路貿易額指數.xlsx', header = 0, index = 0)
+    # df = get_data7_4()
+    # df.to_excel('new_data/7_上海航運交易所_一帶一路貿易額指數.xlsx', header = 0, index = 0)
 
     # 7-5: 集裝箱海運量指數
     # df = get_data7_5()
