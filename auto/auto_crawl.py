@@ -118,8 +118,7 @@ def get_data2(GEO:str):
     '''中國:CN、印度: IN、馬來西亞:MA、土耳其:TR、美國：US'''
     pytrends = TrendReq(hl='en-US', tz=360, timeout = None)
     # kw_list = ['工具機', '控制器', 'Machine tool', 'controller']
-    kw_list = ['Machine tool', 'controller']
-    GEO = 'IN'
+    kw_list = ['controller']
 
     '''取得日曆'''
     # Define start and end dates
@@ -141,8 +140,8 @@ def get_data2(GEO:str):
 
     '''每日數據, 如果直接抓超過3月以上會變成每周取一天'''
     df = pd.DataFrame()
-    for i in tqdm(range(0,5)):
-    # for i in tqdm(range(0,len(date_list)-1)):
+    # for i in tqdm(range(0,5)):
+    for i in tqdm(range(0,len(date_list)-1)):
         pytrends.build_payload(kw_list, cat=0, timeframe = f'{date_list[i]} {date_list[i+1]}', geo = GEO, gprop='')
         tmp = pytrends.interest_over_time()
         df = pd.concat([tmp, df])
@@ -279,12 +278,13 @@ def get_data5(GEO:str):
     options.add_argument('--disable-gpu')
     driver = webdriver.Chrome(options = options)
     driver.get(f'https://tradingeconomics.com/{GEO}/indicators')
+    updated_items = driver.find_elements(By.XPATH, '//*[@id="pagemenutabs"]')[0].text.split()
     time.sleep(3)
     macro = driver.find_elements(By.XPATH, '//*[@id="pagemenutabs"]')[0].text.split('\n')[:-1]
     rows = []
     for l in range(0, len(macro)):
         driver.find_element(By.XPATH, f'//*[@id="pagemenutabs"]/li[{l+1}]/a').click()
-        data = driver.find_elements(By.XPATH, f'//*[@id="{macro[l].lower()}"]/div/div/table/tbody')[0].text.replace('30 Year Mortgage Rate', 'thirty Year Mortgage Rate').replace('15 Year Mortgage Rate', 'fifteen Year Mortgage Rate').replace('Michigan 5 Year Inflation Expectations', 'Michigan five Year Inflation Expectations').replace('1000', 'one thousand').replace('4-week','four-week').split('\n')
+        data = driver.find_elements(By.XPATH, f'//*[@id="{macro[l].lower()}"]/div/div/table/tbody')[0].text.replace('30 Year Mortgage Rate', 'thirty Year Mortgage Rate').replace('15 Year Mortgage Rate', 'fifteen Year Mortgage Rate').replace('Michigan 5 Year Inflation Expectations', 'Michigan five Year Inflation Expectations').replace('4-week','four-week').split('\n')
         
         for i in range(0,len(data)):
             tmp = data[i].split(' ')
@@ -344,7 +344,7 @@ def get_data5(GEO:str):
                 
             rows.append({'總經種類':macro[l],'指標名稱':name, 'Last':tmp[k], 'Previous': previous, 'Higest': highest, 'Lowest': lowest, '單位': unit, '公告日期': notice_date})
     data = pd.DataFrame(rows)
-    return data
+    return data, updated_items
 
 def get_data6(GEO:str):
     '''中國:china、印度: india、馬來西亞:malaysia、土耳其:turkey、美國：usa ##土耳其資料壞了'''

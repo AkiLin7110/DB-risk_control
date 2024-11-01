@@ -44,8 +44,9 @@ def product_analysis():
 
     '''各國產品搜索量'''
     GEO = request.args.get('GEO', "")  # Get GEO from URL parameters, default to empty
+    print(f'各國產品搜索量:{GEO}')
     if GEO:
-        df = pd.read_excel(f'auto/data/2_google_{GEO}.xlsx', index_col=0)
+        df = pd.read_excel(f'auto/new_data/2_google_{GEO}.xlsx', index_col=0)
         data_indexes = df.index.astype(str).to_list()
         label_2_1 = ['tool machine']
         label_2_2 = ['controller']
@@ -73,9 +74,10 @@ def product_analysis():
 
 
     '''概況總覽'''
-    jsonFile = open("auto/data/5_經濟數據_united-states_overview.json",'r')
+    jsonFile = open("auto/data/5_經濟數據_united-states_Overview.json",'r')
     f =  jsonFile.read()   # 要先使用 read 讀取檔案
     df5 = json.loads(f)      # 再使用 loads
+    # print(df5)
     jsonFile.close()
     df5_labels = list([tmp for tmp in df5.keys() if '_date' not in tmp and '_unit' not in tmp])
 
@@ -103,10 +105,6 @@ def product_analysis():
 @app.route('/operation_condition', methods=['GET', 'POST'])
 def operation_condition():
     return render_template('operation_condition.html')
-
-@app.route('/economic_analysis', methods=['GET', 'POST'])
-def economic_analysis():
-    return render_template('economic_analysis.html')
 
 @app.route('/government', methods=['GET', 'POST'])
 def government():
@@ -161,43 +159,65 @@ def update_data3():
 
 @app.route('/update/get_data5', methods=['GET', 'POST'])
 def update_data5():
+    updated = request.form.get('updated_item')  # Retrieve updated_item from the form
+    # updated = 'all'
+
+    GEOs = ['china', 'india', 'malaysia', 'turkey', 'united-states']
     filepath = 'auto/new_data/'
-    GEO = 'united-states'
-    df = get_data5(GEO)
-    df.to_excel(f'{filepath}/5_經濟數據_{GEO}.xlsx', index = 0)
 
-    # 寫入到舊有的excel檔的不同sheet裡面
-    path_new = 'auto/new_data/5_經濟數據_united-states.xlsx'
-    path_update = 'auto/data/5_經濟數據_united-states_overview.json'
+    for GEO in GEOs:
 
-    df = pd.read_excel(path_new) 
-    index_names = df[df['總經種類'] == 'Overview']['指標名稱'].values
+        if updated == 'all':
+            df, updated_items = get_data5(GEO)
+        else:
+            df, _ = get_data5(GEO)
+            updated_items = [updated]
 
-    try:
-        jsonFile = open(path_update,'r')
-        f =  jsonFile.read()   # 要先使用 read 讀取檔案
-        df_update = json.loads(f)
-        jsonFile.close()
-    except:
-        df_update = {}
+        df.to_excel(f'{filepath}5_經濟數據_{GEO}.xlsx', index = 0)
+        path_update = f'auto/data/5_經濟數據.json'
 
-    for tmp in index_names:
-        if tmp not in df_update.keys():
-            df_update[tmp] = []
-            df_update[f'{tmp}_date'] = []
-            df_update[f'{tmp}_unit'] = []
-        # if len(df_update[f'{tmp}_date']) > 0:
-        #     if df_update[f'{tmp}_date'][-1] == df[df['指標名稱'] == tmp]['公告日期'].values[0]:
-        #         break        
-        df_update[tmp].append(df[df['指標名稱'] == tmp]['Last'].values[0])
-        df_update[f'{tmp}_date'].append(df[df['指標名稱'] == tmp]['公告日期'].values[0])
-        df_update[f'{tmp}_unit'].append(df[df['指標名稱'] == tmp]['單位'].values[0])
+        try:
+            jsonFile = open(path_update,'r')
+            f =  jsonFile.read()   # 要先使用 read 讀取檔案
+            df_update = json.loads(f)
+            jsonFile.close()
+        except:
+            df_update = {}
 
-    json_data = json.dumps(df_update)
-    with open(path_update, "w") as json_file:
-        json_file.write(json_data)
+        if GEO not in df_update.keys():
+            df_update[GEO] = {}
 
-    message = f'更新完成: {GEO} 概況'
+        print(f"Processing data for {GEO}: {df_update[GEO]}")
+
+        # 寫入到舊有的excel檔的不同sheet裡面
+        path_new = f'{filepath}5_經濟數據_{GEO}.xlsx'
+        for updated_item in updated_items:
+
+            df = pd.read_excel(path_new) 
+            index_names = df[df['總經種類'] == f'{updated_item}']['指標名稱'].values
+            
+
+
+            for tmp in index_names:
+                if tmp not in df_update[GEO].keys():
+                    df_update[GEO][tmp] = []
+                    df_update[GEO][f'{tmp}_date'] = []
+                    df_update[GEO][f'{tmp}_unit'] = []
+                if len(df_update[GEO][f'{tmp}_date']) > 0:
+                    if df_update[GEO][f'{tmp}_date'][-1] == df[df['指標名稱'] == tmp]['公告日期'].values[0]:
+                        print(GEO, tmp)
+                        break 
+                print(f"Updating {GEO}, {tmp} data...")       
+                df_update[GEO][tmp].append(float(df[df['指標名稱'] == tmp]['Last'].values[0]))
+                df_update[GEO][f'{tmp}_date'].append(df[df['指標名稱'] == tmp]['公告日期'].values[0])
+                df_update[GEO][f'{tmp}_unit'].append(str(df[df['指標名稱'] == tmp]['單位'].values[0]))
+                print(f"Updated {GEO}: {df_update[GEO]}")
+
+            json_data = json.dumps(df_update)
+            with open(path_update, "w") as json_file:
+                json_file.write(json_data)
+
+        message = f'更新完成: {GEOs} 概況'
     return render_template('update_product.html', message = message)
 
 @app.route('/update/get_data7', methods=['GET', 'POST'])
@@ -370,6 +390,20 @@ def update_data8():
     get_data8_3()
     
     return render_template('update_product.html', message=message)
+
+@app.route('/economic_analysis', methods=['GET', 'POST'])
+def economic_analysis():
+    '''概況總覽'''
+    jsonFile = open("auto/data/5_經濟數據.json",'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df5 = json.loads(f)      # 再使用 loads
+    jsonFile.close()
+    df5_labels = list([tmp for tmp in df5.keys() if '_date' not in tmp and '_unit' not in tmp])
+    return render_template('economic_analysis.html',
+                           df5_labels = df5_labels, df5 = df5)
+
+
+
 
 
 if __name__ == '__main__':

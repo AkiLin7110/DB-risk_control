@@ -1,1 +1,278 @@
-<html><body><h1>Hello World</h1></body></html>
+<head>
+    <style>
+        .scrollable-container {
+            max-height: 400px; /* Adjust this value as needed */
+            overflow-y: auto; /* Enable vertical scrolling */
+            border: 1px solid #ddd; /* Optional border */
+            padding: 10px;
+            width: 20%; /* Full width */
+            position: relative;
+        }
+
+        .item-box {
+            border: 1px solid #e3e3e3;
+            padding: 1rem;
+            width: 100%; /* Full width of the container */
+            cursor: pointer;
+            margin-bottom: 10px; /* Add some spacing between items */
+        }
+
+        .sortable-selected {
+            background-color: #e3e3e3;
+            border: 1px solid #000;
+        }
+
+        /* 固定 h3 標題 */
+        .scrollable-container h3 {
+            position: sticky;
+            top: 0;
+            background-color: #ddd;
+            z-index: 1;
+            padding: 5px;
+            margin: 0;
+            border-bottom: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>經濟分析</h1>
+    <h2>各國經濟總覽</h2>
+    <form method="post" action="{{ url_for('update_data5') }}" id="updateForm">
+        <input type="hidden" name="updated_item" id="updated_item">
+        <p>
+            <button type="button" onclick="submitFormWithUpdatedItem('all')">更新資料</button>
+        </p>
+    </form>
+
+    <div style="display: flex; justify-content: space-between;">
+        <div class="scrollable-container" id="sortable1">
+            <h3>國家</h3>
+            {% for df5_label in df5_labels %}
+            <div class="item-box" 
+                 data-value="{{ df5[df5_label] | safe }}" 
+                 data-key="{{ df5[df5_label].keys() | list }}"
+                 name="selection_query" 
+                 value="{{ df5_label | safe }}" 
+                 onclick="transferItem(this)">
+                    {{ df5_label | safe }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="scrollable-container" id="sortable2">
+            <h3>欄位</h3>
+            <!-- Items from sortable1 will appear here -->
+        </div>
+
+        <div style="width:70%">
+            <canvas id="selectionChart"></canvas>
+        </div>
+    </div>
+</body>
+    <script>
+
+    const selectedItems = [];
+
+    function transferItem(item) {
+        const sortable2 = document.getElementById('sortable2');
+        // console.log(sortable2)
+        let keys = item.getAttribute('data-key');
+        keys = keys.replace(/'/g, '"');
+
+        try {
+            keys = JSON.parse(keys);
+        } catch (e) {
+            keys = keys.split(',');
+        }
+
+        const label = item.getAttribute('value');
+        const data = item.getAttribute('data-value');
+        
+        const existingIndex = selectedItems.findIndex(selected => selected.label === label && JSON.stringify(selected.data) === JSON.stringify(data));
+
+        if (existingIndex > -1) {
+            item.classList.remove('sortable-selected');
+            selectedItems.splice(existingIndex, 1);
+            removeFieldsFromSortable2(label);
+        } else {
+            item.classList.add('sortable-selected');
+            selectedItems.push({ label, data });
+            addFieldsToSortable2(keys, label);
+        }
+        
+    }
+
+    function addFieldsToSortable2(keys, label) {
+        const sortable2 = document.getElementById('sortable2');
+        const df5 = {{df5|safe}}
+        
+        keys.forEach(key => {
+            if (!key.includes('unit') && !key.includes('date')) {
+                const keyItem = document.createElement('div');
+                keyItem.className = 'item-box';
+                keyItem.textContent = `${label} - ${key}`;
+                keyItem.dataset.key = key;
+                keyItem.dataset.label = label;
+                keyItem.dataset.value = JSON.stringify(df5[label][key])
+                keyItem.dataset.textContent = JSON.stringify(df5[label][`${key}_date`])
+
+                // 直接為動態新增的元素綁定點擊事件
+                keyItem.addEventListener('click', () => {
+                    const data = JSON.parse(keyItem.getAttribute('data-value'));
+                    const itemLabel = `${label} - ${key}`;
+                    
+                    // 查找是否已經選中
+                    const existingIndex = selectedItems2.findIndex(selected => selected.label === itemLabel && JSON.stringify(selected.data) === JSON.stringify(data));
+                    
+                    if (existingIndex > -1) {
+                        keyItem.classList.remove('sortable-selected');
+                        selectedItems2.splice(existingIndex, 1);
+                    } else {
+                        keyItem.classList.add('sortable-selected');
+                        selectedItems2.push({ label: itemLabel, data, textContent: keyItem.dataset.textContent });
+                    }
+                    // console.log(selectedItems2)
+                    
+                    // 更新圖表
+                    updateChart(selectedItems2);
+                });
+                sortable2.appendChild(keyItem);
+            }
+        });
+    }
+
+    function removeFieldsFromSortable2(label) {
+    const sortable2 = document.getElementById('sortable2');
+    const itemsToRemove = sortable2.querySelectorAll(`.item-box[data-label='${label}']`);
+
+    itemsToRemove.forEach(item => {
+        // 查找並從 selectedItems2 中移除項目
+        const existingIndex = selectedItems2.findIndex(selected => selected.label === `${label} - ${item.dataset.key}`);
+        if (existingIndex > -1) {
+            selectedItems2.splice(existingIndex, 1);
+        }
+        sortable2.removeChild(item);
+    });
+    
+    // 更新圖表
+    updateChart(selectedItems2);
+    }
+        
+    </script>
+    
+    
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const selectedItems2 = [];
+        const itemBoxes = document.querySelectorAll('#sortable2 .item-box');
+        itemBoxes.forEach(item => {
+        item.addEventListener('click', () => {
+            // 解析 data-value 屬性的 JSON 數據
+            const data = item.getAttribute('data-value');
+            const label = item.getAttribute('value');
+            // 查找是否已經選中
+            const existingIndex = selectedItems2.findIndex(selected => selected.label === label && JSON.stringify(selected.data) === JSON.stringify(data));
+
+            if (existingIndex > -1) {
+                // 如果已選中，則取消選中
+                item.classList.remove('sortable-selected');
+                selectedItems2.splice(existingIndex, 1);
+            } else {
+                // 如果未選中，則添加到選中項目中
+                item.classList.add('sortable-selected');
+                selectedItems2.push({ label, data });
+            }
+
+            // 更新圖表
+            updateChart(selectedItems2);
+         });
+      });
+
+        const sc = document.getElementById('selectionChart').getContext('2d');
+        let selectionChart = new Chart(sc, {
+            type: 'line',
+            data: {
+                labels: [], // Example labels
+                datasets: []
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+
+
+
+    function updateChart(selectedData) {
+        // Step 1: Collect all unique timestamps from selectedData
+        const uniqueLabels = new Set();
+        selectedData.forEach(item => {
+            let itemLabels;
+            try {
+                itemLabels = JSON.parse(item.textContent);
+                itemLabels.forEach(label => uniqueLabels.add(label));
+            } catch (e) {
+                console.error("Error parsing textContent for labels:", e);
+            }
+        });
+
+        // Convert Set to sorted array of unique labels (timestamps)
+        const sortedLabels = Array.from(uniqueLabels)
+            .sort((a, b) => new Date(a) - new Date(b)); // Sort by date
+
+        // Step 2: Prepare datasets with data aligned to sortedLabels
+        const datasets = selectedData.map(item => {
+            let itemLabels, itemData;
+
+            try {
+                itemLabels = JSON.parse(item.textContent);
+                itemData = item.data;
+            } catch (e) {
+                console.error("Error parsing item data or labels:", e);
+            }
+
+            // Align data with sortedLabels by placing nulls where timestamps don't match
+            const alignedData = sortedLabels.map(label => {
+                const index = itemLabels ? itemLabels.indexOf(label) : -1;
+                return index !== -1 ? itemData[index] : null;
+            });
+
+            return {
+                label: item.label,
+                data: alignedData,
+                fill: false,
+                borderColor: getRandomColor(),
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            };
+        });
+
+        // Step 3: Update chart with sorted labels and aligned datasets
+        selectionChart.data.labels = sortedLabels;  // Set x-axis to all unique timestamps
+        selectionChart.data.datasets = datasets;
+        selectionChart.update();
+    }
+
+
+
+
+            // Function to generate random colors for the chart lines
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        function submitFormWithUpdatedItem(value) {
+                document.getElementById('updated_item').value = value;
+                document.getElementById('updateForm').submit();
+            }
+    </script>

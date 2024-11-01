@@ -42,13 +42,6 @@
         width: 20%; /* Full width */
         }
 
-        .item-box {
-            border: 1px solid #e3e3e3;
-            padding: 1rem;
-            width: 100%; /* Full width of the container */
-            cursor: pointer;
-            margin-bottom: 10px; /* Add some spacing between items */
-        }
 
         .sortable-selected {
             background-color: #e3e3e3;
@@ -66,23 +59,16 @@
             /* 若按鈕數量過多，可允許換行 */
             flex-wrap: wrap;
         }
-
-        /* 設置按鈕的樣式 */
+        
+        /* 整合後的 .item-box 樣式 */
         .item-box {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            background-color: #C4E1FF; 
-            color: white;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
+        border: 1px solid #e3e3e3;
+        padding: 1rem;
+        width: 100%; /* Full width of the container */
+        cursor: pointer;
+        margin-bottom: 10px; /* Add some spacing between items */
+    }
 
-        /* 按鈕懸停時的效果 */
-        .item-box:hover {
-            background-color: #66B3FF;
-        }
 
         /* Additional styling if needed */
         .btn-secondary {
@@ -149,11 +135,16 @@
     </div>
 
     <h2>各國經濟總覽</h2>
-    <form method='post' action={{ url_for('update_data5') }}>
+    <form method="post" action="{{ url_for('update_data5') }}" id="updateForm">
+        <!-- Hidden input to store updated_item -->
+        <input type="hidden" name="updated_item" id="updated_item">
+    
         <p>
-        <button type='submit'>更新資料</button>
+            <!-- Button that triggers JavaScript to set the updated_item value -->
+            <button type="button" onclick="submitFormWithUpdatedItem('Overview')">更新資料</button>
         </p>
     </form>
+
     <div style="display: flex; justify-content: space-between;">
         <div class="scrollable-container" id="sortable1">
             {% for df5_label in df5_labels %}
@@ -312,10 +303,11 @@
         });
     </script>
 
+    <!-- data2 -->
     <script>
         const data_indexes = {{data_indexes | safe}}
         const data_controller = {{data_controller | safe}}
-        const data_machine = {{data_machine | safe}}
+        // const data_machine = {{data_machine | safe}}
         const label_2_1 = {{label_2_1 | safe}}
         const label_2_2 = {{label_2_2 | safe}}
         const SEOchartElement = document.getElementById('SEOChart');
@@ -335,13 +327,13 @@
                                 borderColor: 'blue',
                                 backgroundColor: 'rgba(0, 0, 255, 0.1)',
                             },
-                            {
-                                type: 'line',
-                                label: label_2_2,  // Ensure label_2_2 is defined
-                                data: data_machine,  // Ensure data_machine is defined
-                                borderColor: 'green',
-                                backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                            }
+                            // {
+                            //     type: 'line',
+                            //     label: label_2_2,  // Ensure label_2_2 is defined
+                            //     data: data_machine,  // Ensure data_machine is defined
+                            //     borderColor: 'green',
+                            //     backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                            // }
                         ]
                     }
                 });
@@ -421,6 +413,7 @@
         });
     </script>
 
+    <!-- data5 -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
     <script>
@@ -437,6 +430,7 @@
     <script>
         const selectedItems = [];
         const itemBoxes = document.querySelectorAll('.item-box');
+        
         itemBoxes.forEach(item => {
         item.addEventListener('click', () => {
             // 解析 data-value 屬性的 JSON 數據
@@ -455,6 +449,7 @@
                 item.classList.add('sortable-selected');
                 selectedItems.push({ label, data });
             }
+            
 
             // 更新圖表
             updateChart(selectedItems);
@@ -503,18 +498,13 @@
             return color;
         }
     </script>
-
-    <!-- <script>
-        // Function to toggle button color on click
-        const buttons = document.querySelectorAll('.btn');
-        buttons.forEach(button => {
-            button.addEventListener('click', function() {
-                // Toggle button color between primary and secondary
-                this.classList.toggle('btn-secondary');
-                this.classList.toggle('btn-primary');
-            });
-        });
-    </script> -->
+    <script>
+        // Function to set updated_item value and submit the form
+        function submitFormWithUpdatedItem(value) {
+            document.getElementById('updated_item').value = value;
+            document.getElementById('updateForm').submit();
+        }
+    </script>
     <script>
         // 航運數據 (Shipping Data) Buttons - Only one button can be selected at a time
         const shippingButtons = document.querySelectorAll('.btn-group[aria-label="Basic example"] .btn');
