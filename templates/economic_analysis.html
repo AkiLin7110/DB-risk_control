@@ -37,39 +37,54 @@
 <body>
     <h1>經濟分析</h1>
     <h2>各國經濟總覽</h2>
-    <form method="post" action="{{ url_for('update_data5') }}" id="updateForm">
-        <input type="hidden" name="updated_item" id="updated_item">
-        <p>
-            <button type="button" onclick="submitFormWithUpdatedItem('all')">更新資料</button>
-        </p>
-    </form>
+        <form method="post" action="{{ url_for('update_data5') }}" id="updateForm">
+            <input type="hidden" name="updated_item" id="updated_item">
+            <p>
+                <button type="button" onclick="submitFormWithUpdatedItem('all')">更新資料</button>
+            </p>
+        </form>
 
-    <div style="display: flex; justify-content: space-between;">
-        <div class="scrollable-container" id="sortable1">
-            <h3>國家</h3>
-            {% for df5_label in df5_labels %}
-            <div class="item-box" 
-                 data-value="{{ df5[df5_label] | safe }}" 
-                 data-key="{{ df5[df5_label].keys() | list }}"
-                 name="selection_query" 
-                 value="{{ df5_label | safe }}" 
-                 onclick="transferItem(this)">
-                    {{ df5_label | safe }}
+        <div style="display: flex; justify-content: space-between;">
+            <div class="scrollable-container" id="sortable1">
+                <h3>國家</h3>
+                {% for df5_label in df5_labels %}
+                <div class="item-box" 
+                    data-value="{{ df5[df5_label] | safe }}" 
+                    data-key="{{ df5[df5_label].keys() | list }}"
+                    name="selection_query" 
+                    value="{{ df5_label | safe }}" 
+                    onclick="transferItem(this)">
+                        {{ df5_label | safe }}
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
 
-        <div class="scrollable-container" id="sortable2">
-            <h3>欄位</h3>
-            <!-- Items from sortable1 will appear here -->
+            <div class="scrollable-container" id="sortable2">
+                <h3>欄位</h3>
+                <!-- Items from sortable1 will appear here -->
+            </div>
+
+            <div style="width:70%">
+                <canvas id="selectionChart"></canvas>
+            </div>
         </div>
+    <h2>各國Swift占比</h2>
+        <form method='post' action={{ url_for('update_data12') }}>
+            <p>
+            <button type='submit'>更新資料</button>
+            </p>
+        </form>
 
         <div style="width:70%">
-            <canvas id="selectionChart"></canvas>
+            <canvas id="myChart3"></canvas>
         </div>
-    </div>
+
+
+    
 </body>
-    <script>
+
+<!-- 各國經濟總覽 -->
+<script>
 
     const selectedItems = [];
 
@@ -159,9 +174,6 @@
     }
         
     </script>
-    
-    
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const selectedItems2 = [];
@@ -275,4 +287,96 @@
                 document.getElementById('updated_item').value = value;
                 document.getElementById('updateForm').submit();
             }
-    </script>
+        </script>
+
+<!-- 各國Swift占比 -->
+ <!-- <script>
+    let ctx = document.getElementById("myChart3");
+    let myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
+            datasets: [
+            {
+                label: '# of Votes',
+                data: [22,12,5,12,4,21],
+                // backgroundColor: backgroundColor1,
+                // borderColor: borderColor1,
+                borderWidth: 1
+            },
+            {
+                label: '# of Votes',
+                data: [18,24,10,3,6,21],
+                // backgroundColor: backgroundColor2,
+                // borderColor: borderColor2,
+                borderWidth: 1
+            },
+            ]
+            },
+        options: {
+            scales: {
+                yAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        },
+                        stacked: true,
+                }],
+                xAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        },
+                        stacked: true,
+                }]
+            }
+        }
+    });
+
+ </script> -->
+
+ <script>
+    let ctx = document.getElementById("myChart3");
+    let df12 = {{ df12 | tojson }};
+    let currencyLabels = {{ df12_labels | tojson }};
+
+    console.log(currencyLabels)
+
+    // Extract unique time labels from df12 data
+    let timeLabelsSet = new Set();
+    currencyLabels.forEach(label => {
+        df12[label]["時間"].forEach(time => timeLabelsSet.add(time));
+    });
+    let timeLabels = Array.from(timeLabelsSet).sort();  // Convert set to sorted array
+
+    // Prepare datasets for each currency with percentages aligned to timeLabels
+    let datasets = currencyLabels.map(label => {
+        let data = timeLabels.map(time => {
+            let timeIndex = df12[label]["時間"].indexOf(time);
+            return timeIndex !== -1 ? parseFloat(df12[label]["SWIFT占比"][timeIndex].replace("%", "")) : 0;
+        });
+        return {
+            label: label,
+            data: data,
+            borderWidth: 1,
+            // Optional: Specify backgroundColor dynamically if needed
+        };
+    });
+
+    let myChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: timeLabels,
+            datasets: datasets
+        },
+        options: {
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    beginAtZero: true,
+                    stacked: true,
+                }
+            }
+        }
+    });
+</script>

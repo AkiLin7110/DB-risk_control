@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, redirect, url_for, jsonify
-from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10
+from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10, get_data_12
 import json
 import pandas as pd
 from operator import itemgetter
@@ -74,7 +74,7 @@ def product_analysis():
 
 
     '''概況總覽'''
-    jsonFile = open("auto/data/5_經濟數據_united-states_Overview.json",'r')
+    jsonFile = open("auto/data/5_經濟數據_Overview.json",'r')
     f =  jsonFile.read()   # 要先使用 read 讀取檔案
     df5 = json.loads(f)      # 再使用 loads
     # print(df5)
@@ -92,7 +92,7 @@ def product_analysis():
     return render_template('product_analysis.html', indexs=indexs, titles=titles,
                            label_im=label_im, data_im_values=data_im_values, 
                            label_ex=label_ex, data_ex_values=data_ex_values,
-                           GEO=GEO, data_indexes=data_indexes, 
+                           GEO = GEO, data_indexes=data_indexes, 
                            label_2_1=label_2_1, label_2_2=label_2_2, 
                            data_controller=data_controller, data_machine=data_machine,
                            indexs_3 = indexs_3, label_3 = label_3, data = data,
@@ -174,7 +174,7 @@ def update_data5():
             updated_items = [updated]
 
         df.to_excel(f'{filepath}5_經濟數據_{GEO}.xlsx', index = 0)
-        path_update = f'auto/data/5_經濟數據.json'
+        path_update = f'auto/data/5_經濟數據_{updated}.json'
 
         try:
             jsonFile = open(path_update,'r')
@@ -391,16 +391,65 @@ def update_data8():
     
     return render_template('update_product.html', message=message)
 
+
 @app.route('/economic_analysis', methods=['GET', 'POST'])
 def economic_analysis():
     '''概況總覽'''
-    jsonFile = open("auto/data/5_經濟數據.json",'r')
+    jsonFile = open("auto/data/5_經濟數據_all.json",'r')
     f =  jsonFile.read()   # 要先使用 read 讀取檔案
     df5 = json.loads(f)      # 再使用 loads
     jsonFile.close()
     df5_labels = list([tmp for tmp in df5.keys() if '_date' not in tmp and '_unit' not in tmp])
+
+    '''SWIFT'''
+    jsonFile = open("auto/data/12_SWIFT各幣別支付占比.json",'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df12 = json.loads(f)      # 再使用 loads
+    jsonFile.close()
+    df12_labels = list(tmp for tmp in df12.keys())
+    print(df12_labels)
+
+
     return render_template('economic_analysis.html',
-                           df5_labels = df5_labels, df5 = df5)
+                           df5_labels = df5_labels, df5 = df5,
+                           df12_labels = df12_labels, df12 = df12)
+
+@app.route('/update/get_data12', methods=['GET', 'POST'])
+def update_data12():
+    filepath = 'auto/new_data/'
+    df = get_data_12()
+    df.to_excel(f'{filepath}12_SWIFT各幣別支付占比.xlsx')
+
+    filepath = 'auto/new_data/'
+    df = pd.read_excel(f'{filepath}12_SWIFT各幣別支付占比.xlsx', index_col = 0)
+
+    updatepath = 'auto/data/'
+    path_update = f'{updatepath}12_SWIFT各幣別支付占比.json'
+    jsonFile = open(path_update,'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df_update = json.loads(f)
+    jsonFile.close()
+
+    for i in range(0,len(df)):
+        if df['幣別'].iloc[i] not in df_update.keys():
+            df_update[df['幣別'].iloc[i]] = {}
+            df_update[df['幣別'].iloc[i]]['時間'] = []
+            df_update[df['幣別'].iloc[i]]['SWIFT占比'] = []
+
+        if len(df_update[df['幣別'].iloc[i]]['時間']) > 0:
+            if df['最新公告時間'].iloc[i] == df_update[df['幣別'].iloc[i]]['時間'][-1]:
+                break
+
+        df_update[df['幣別'].iloc[i]]['時間'].append(df['最新公告時間'].iloc[i])
+        df_update[df['幣別'].iloc[i]]['SWIFT占比'].append(df['占比'].iloc[i])
+
+    json_data = json.dumps(df_update)
+    with open(path_update, "w") as json_file:
+        json_file.write(json_data)
+
+
+    message = f'更新完成: SWIFT 資料'
+    return render_template('update_economic.html', message=message)
 
 
 

@@ -21,6 +21,7 @@ from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
 
 import re
+import undetected_chromedriver as uc
 
 session = requests.Session()
 
@@ -729,7 +730,30 @@ def get_data_10(airport):
     df['航班數量'] = [num]
     df.index = [pd.to_datetime(datetime.now())]*len(df)
     return df
-    
+
+def get_data_12():
+    url = 'https://www.macromicro.me/charts/117199/global-share-of-international-payments-via-swift-by-major-currency'
+    driver = uc.Chrome()
+    driver.get(url)
+    time.sleep(5)
+    data = driver.find_elements(By.XPATH,'//*[@id="ccApp"]/div/div[2]/div[1]/div/div/div[2]/div[4]/ul')[0].text.split()
+    df = {
+        '幣別':[],
+        '最新公告時間':[],
+        '占比':[],
+        # '前一期':[]
+    }
+    for i in range(0,len(data), 4):
+        df['幣別'].append(data[i])
+        df['最新公告時間'].append(data[i+1])
+        df['占比'].append(data[i+2])
+        # df['前一期'].append(data[i+3])
+
+    df = pd.DataFrame(df)
+    test = [float(tmp[:-1]) for tmp in df.iloc[1:]['占比']]
+    df.iloc[0]['占比'] = str(round(100-np.sum(test),2))+'%'
+    df.iloc[0]['最新公告時間'] = df.iloc[1]['最新公告時間']
+    return df   
 
 # if __name__ == '__main__':
 
@@ -832,3 +856,7 @@ def get_data_10(airport):
     # airport = 'PVG'
     # df = get_data_10(airport)
     # df.to_excel(f'new_data/10_機場吞吐量_{airport}.xlsx')
+
+    # 12: SWIFT
+    # df = get_data_12()
+    # df.to_excel(f'new_data/12_SWIFT各幣別支付占比.xlsx')
