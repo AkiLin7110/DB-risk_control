@@ -78,9 +78,49 @@
         <div style="width:70%">
             <canvas id="myChart3"></canvas>
         </div>
-
-
     
+    <h2>各國經濟數據</h2>
+        <form method='post' action={{ url_for('update_data13') }}>
+            <p>
+            <button type='submit'>更新資料</button>
+            </p>
+        </form>
+        <div style="display: flex; justify-content: space-between;">
+            <div class="scrollable-container" id="sortable3">
+                <h3>商品類別</h3>
+                {% for df13_label in df13_labels %}
+                <div class="item-box" 
+                    data-value="{{ df13[df13_label] | safe }}" 
+                    data-key="{{ df13[df13_label].keys() | list }}"
+                    name="selection_query" 
+                    value="{{ df13_label | safe }}" 
+                    onclick="transferItemSortable3(this)">
+                    {{ df13_label | safe }}
+                </div>
+                {% endfor %}
+            </div>
+    
+            <div class="scrollable-container" id="sortable4">
+                <h3>欄位</h3>
+                <!-- Items from sortable3 will appear here -->
+            </div>
+    
+            <div style="width:70%">
+                <canvas id="selectionChart2"></canvas>
+            </div>
+        </div>
+
+    <h2>中國汽車銷量</h2>
+    <form method='post' action={{ url_for('update_data14') }}>
+        <p>
+        <button type='submit'>更新資料</button>
+        </p>
+    </form>
+    <div style="height:90%;width:90%;">
+        <canvas id="dualYAxisChart"></canvas>
+    </div>
+    
+
 </body>
 
 <!-- 各國經濟總覽 -->
@@ -290,49 +330,6 @@
         </script>
 
 <!-- 各國Swift占比 -->
- <!-- <script>
-    let ctx = document.getElementById("myChart3");
-    let myChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ["Red", "Blue", "Yellow", "Green", "Purple", "Orange"],
-            datasets: [
-            {
-                label: '# of Votes',
-                data: [22,12,5,12,4,21],
-                // backgroundColor: backgroundColor1,
-                // borderColor: borderColor1,
-                borderWidth: 1
-            },
-            {
-                label: '# of Votes',
-                data: [18,24,10,3,6,21],
-                // backgroundColor: backgroundColor2,
-                // borderColor: borderColor2,
-                borderWidth: 1
-            },
-            ]
-            },
-        options: {
-            scales: {
-                yAxes: [{
-                        ticks: {
-                            beginAtZero: true
-                        },
-                        stacked: true,
-                }],
-                xAxes: [{
-                        ticks: {
-                            beginAtZero: true
-                        },
-                        stacked: true,
-                }]
-            }
-        }
-    });
-
- </script> -->
-
  <script>
     let ctx = document.getElementById("myChart3");
     let df12 = {{ df12 | tojson }};
@@ -380,3 +377,280 @@
         }
     });
 </script>
+
+<!-- 各國經濟數據 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const selectedItems3 = [];
+    const selectedItems4 = [];
+    let selectionChart2;
+
+    function transferItemSortable3(item) {
+        const sortable4 = document.getElementById('sortable4');
+        let keys = item.getAttribute('data-key').replace(/'/g, '"');
+        keys = JSON.parse(keys);
+        const label = item.getAttribute('value');
+        const data = item.getAttribute('data-value');
+
+        const existingIndex = selectedItems3.findIndex(selected => selected.label === label && selected.data === data);
+
+        if (existingIndex > -1) {
+            item.classList.remove('sortable-selected');
+            selectedItems3.splice(existingIndex, 1);
+            removeFieldsFromSortable4(label);
+        } else {
+            item.classList.add('sortable-selected');
+            selectedItems3.push({ label, data });
+            addFieldsToSortable4(keys, label);
+        }
+    }
+
+    function addFieldsToSortable4(keys, label) {
+        const sortable4 = document.getElementById('sortable4');
+        const df13 = {{ df13 | safe }};
+        
+        keys.forEach(key => {
+            if (!key.includes('unit') && !key.includes('date')) {
+                const keyItem = document.createElement('div');
+                keyItem.className = 'item-box';
+                keyItem.textContent = `${label} - ${key}`;
+                keyItem.dataset.key = key;
+                keyItem.dataset.label = label;
+                keyItem.dataset.value = JSON.stringify(df13[label][key]);
+
+                keyItem.addEventListener('click', () => {
+                    const data = JSON.parse(keyItem.dataset.value);
+                    const itemLabel = `${label} - ${key}`;
+                    const existingIndex = selectedItems4.findIndex(selected => selected.label === itemLabel && JSON.stringify(selected.data) === JSON.stringify(data));
+
+                    if (existingIndex > -1) {
+                        keyItem.classList.remove('sortable-selected');
+                        selectedItems4.splice(existingIndex, 1);
+                    } else {
+                        keyItem.classList.add('sortable-selected');
+                        selectedItems4.push({ label: itemLabel, data });
+                    }
+                    
+                    updateChart2(selectedItems4);
+                });
+                sortable4.appendChild(keyItem);
+            }
+        });
+    }
+
+    function removeFieldsFromSortable4(label) {
+        const sortable4 = document.getElementById('sortable4');
+        const itemsToRemove = sortable4.querySelectorAll(`.item-box[data-label='${label}']`);
+
+        itemsToRemove.forEach(item => {
+            // Remove the item from the DOM
+            sortable4.removeChild(item);
+
+            // Find and remove the item from selectedItems4
+            const existingIndex = selectedItems4.findIndex(
+                selected => selected.label === `${label} - ${item.dataset.key}`
+            );
+            if (existingIndex > -1) {
+                selectedItems4.splice(existingIndex, 1);
+            }
+        });
+
+        // Update the chart with the updated selectedItems4
+        updateChart2(selectedItems4);
+    }
+
+
+    function updateChart2(selectedData) {
+        // Ensure a unified set of date-time labels across all datasets
+        const allLabels = new Set();
+        selectedData.forEach(item => {
+            item.data['Date'].forEach((date, i) => {
+                const dateTime = `${date} ${item.data['time'][i]}`;
+                allLabels.add(dateTime);
+            });
+        });
+        const labels = Array.from(allLabels).sort(); // Sort labels chronologically
+
+        // Map each dataset to the unified x-axis labels
+        const datasets = selectedData.map(item => {
+            const valueKey = item.data['Price'] ? 'Price' : 'Yield';
+
+            const dataMap = new Map();
+            item.data['Date'].forEach((date, i) => {
+                const dateTime = `${date} ${item.data['time'][i]}`;
+                dataMap.set(dateTime, item.data[valueKey][i]);
+            });
+            
+            // Fill data array based on the unified labels (null if no data for the date-time)
+            const data = labels.map(label => dataMap.has(label) ? dataMap.get(label) : null);
+
+            return {
+                label: item.label,
+                data: data,
+                fill: false,
+                borderColor: getRandomColor(),
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            };
+        });
+
+        // Destroy previous chart instance if it exists
+        if (selectionChart2) selectionChart2.destroy();
+
+        // Create new chart instance with unified x-axis
+        const ctx = document.getElementById('selectionChart2').getContext('2d');
+        selectionChart2 = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                scales: {
+                    x: { title: { display: true, text: 'Date and Time' } },
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+}
+
+    function getRandomColor() {
+        return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+    }
+</script>
+
+<!-- 中國汽車銷量 -->
+<!-- <script>
+    console.log({{df14 | safe}})
+    const df14 = {{df14 | safe}}
+    const indexs_14 = {{df14['中國汽車銷量']['时间'] | safe}}
+    const label_14 = Object.keys(df14['中國汽車銷量']).slice(1)
+    console.log(label_14)
+    const data14 = {{df14['中國汽車銷量'] | safe}}
+
+    const cc = document.getElementById('chartContainer').getContext('2d');
+    
+    // Prepare datasets for each country
+    const datasets14 = label_14.map(country => ({
+        label: country,
+        data: data14[country],
+        fill: false,
+        borderColor: getRandomColor(),
+        tension: 0.1
+    }));
+
+    console.log(datasets14)
+
+    // Function to generate random colors for each line
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    // Create the chart
+    new Chart(cc, {
+        type: 'line',
+        data: {
+            labels: indexs_14, // X-axis (e.g., time periods)
+            datasets: datasets14
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Time Period'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Value'
+                    }
+                }
+            }
+        }
+    });
+</script> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dual Y-Axis Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <canvas id="dualYAxisChart" width="800" height="400"></canvas>
+    <script>
+        console.log({{df14 | safe}})
+        const df14 = {{df14 | safe}}
+        const indexs_14 = {{df14['中國汽車銷量']['时间'] | safe}}
+        const label_14 = Object.keys(df14['中國汽車銷量']).slice(1)
+        console.log(label_14)
+        const data14 = {{df14['中國汽車銷量'] | safe}}
+        const cc = document.getElementById('dualYAxisChart').getContext('2d');
+
+        // Assuming data1 and data2 are arrays representing your data for the two y-axes
+        const labels = indexs_14;  // Replace with your actual labels
+        const data1 = data14['销量'];  // Replace with data for the first dataset
+        const data2 = data14['同比'];           // Replace with data for the second dataset
+
+        const dualYAxisChart = new Chart(cc, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Sales Volume',
+                        data: data1,
+                        yAxisID: 'y',
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                        fill: true
+                    },
+                    {
+                        label: 'Growth Rate',
+                        data: data2,
+                        yAxisID: 'y1',
+                        borderColor: 'green',
+                        backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        type: 'linear',
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Sales Volume'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Growth Rate'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

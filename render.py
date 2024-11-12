@@ -1,8 +1,9 @@
 from flask import Flask, request, render_template, redirect, url_for, jsonify
-from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10, get_data_12
+from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10, get_data_12, get_data13, get_data14
 import json
 import pandas as pd
 from operator import itemgetter
+import os
 
 app = Flask(__name__)
 
@@ -43,21 +44,13 @@ def product_analysis():
     data_ex_values = df['export_美元'].tolist()
 
     '''各國產品搜索量'''
-    GEO = request.args.get('GEO', "")  # Get GEO from URL parameters, default to empty
-    print(f'各國產品搜索量:{GEO}')
-    if GEO:
-        df = pd.read_excel(f'auto/new_data/2_google_{GEO}.xlsx', index_col=0)
-        data_indexes = df.index.astype(str).to_list()
-        label_2_1 = ['tool machine']
-        label_2_2 = ['controller']
-        data_controller = df.iloc[:, 0].tolist()
-        data_machine = df.iloc[:, 1].tolist()
-    else:
-        data_indexes = []
-        label_2_1 = []
-        label_2_2 = []
-        data_controller = []
-        data_machine = []
+    path_update = 'auto/data/2_google_trends.json'
+    jsonFile = open(path_update,'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df2 = json.loads(f)
+    jsonFile.close()
+    df2_labels = list([tmp for tmp in df2.keys()])
+
 
     '''工業生產增加率'''
     df = pd.read_excel('auto/data/3_主要國家工業生產增加率.xlsx', index_col = 0)
@@ -87,19 +80,38 @@ def product_analysis():
     df7 = json.loads(f)
     jsonFile.close()
 
+    '''鋼鐵價格'''
+    updatepath = 'auto/data/'
+    datatype = '9_1'
+    query = '原料價格'
+    path_update = f'{updatepath}{datatype}{query}.json'
+    jsonFile = open(path_update,'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df9_1 = json.loads(f)
+    jsonFile.close()
+
+    df9_1_labels = list(df9_1.keys())
+
+    # '''鋼鐵交易量'''
+    # updatepath = 'auto/data/'
+    # datatype = '9_2'
+    # query = 'LME-Steel-Scrap-CFR-Turkey-Platts'
+    # path_update = f'{updatepath}{datatype}_{query}.json'
+    # jsonFile = open(path_update,'r')
+    # f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    # df_9_2 = json.loads(f)
+    # jsonFile.close()
 
 
     return render_template('product_analysis.html', indexs=indexs, titles=titles,
-                           label_im=label_im, data_im_values=data_im_values, 
-                           label_ex=label_ex, data_ex_values=data_ex_values,
-                           GEO = GEO, data_indexes=data_indexes, 
-                           label_2_1=label_2_1, label_2_2=label_2_2, 
-                           data_controller=data_controller, data_machine=data_machine,
-                           indexs_3 = indexs_3, label_3 = label_3, data = data,
-                           tables = [df4.to_html(classes='data', header="true")],
-                           df5_labels = df5_labels, df5 = df5,
-                        #    df7_1 = df7_1, df7_1_labels = df7_1_labels, df7_1_indexs = df7_1_indexs
-                            df7 = df7
+                            label_im=label_im, data_im_values=data_im_values, 
+                            label_ex=label_ex, data_ex_values=data_ex_values,
+                            df2 = df2, df2_labels = df2_labels,
+                            indexs_3 = indexs_3, label_3 = label_3, data = data,
+                            tables = [df4.to_html(classes='data', header="true")],
+                            df5_labels = df5_labels, df5 = df5,
+                            df7 = df7,
+                            df9_1 = df9_1, df9_1_labels = df9_1_labels
                            )
 
 @app.route('/operation_condition', methods=['GET', 'POST'])
@@ -139,21 +151,67 @@ def update_data1():
 
 @app.route('/update/get_data2', methods=['POST'])
 def update_data2():
-    filepath = 'auto/new_data/'
-    GEO = request.form.get('GEO')
-    print(GEO)
-    df = get_data2(GEO)
-    df.to_excel(f'{filepath}2_google_{GEO}.xlsx')
+    files = os.listdir('auto/new_data')
+    google_files = [file for file in files if "google" in file.lower()]
+
+    try:
+        updatepath = 'auto/data/'
+        path_update = f'{updatepath}2_google_trends.json'
+        jsonFile = open(path_update,'r')
+        f =  jsonFile.read()   # 要先使用 read 讀取檔案
+        df_update = json.loads(f)
+        jsonFile.close()
+    except:
+        df_update = {}
+
+    for google_file in google_files:
+        GEO = google_file.split('_')[-2]
+        query = google_file.split('_')[-1].split('.')[0]
+        df = pd.read_excel(f'auto/new_data/{google_file}')
+        df = df.astype(str)
+        if GEO not in df_update.keys():
+            df_update[f'{GEO}'] = {}
+        if query not in df_update[f'{GEO}'].keys():
+            df_update[f'{GEO}'][f'{query}'] = []
+            df_update[f'{GEO}'][f'{query}_date'] = []
+
+        for i in range(0,len(df)):
+            if df.iloc[i]['date'] in df_update[f'{GEO}'][f'{query}_date']:
+                continue
+            df_update[f'{GEO}'][f'{query}_date'].append(df.iloc[i]['date'])
+            df_update[f'{GEO}'][f'{query}'].append(df.iloc[i][f'{query}'])
+
+    json_data = json.dumps(df_update)
+    with open(path_update, "w") as json_file:
+        json_file.write(json_data)
     message = '更新完成: 搜尋資料'
+
     # return redirect(url_for('product_analysis', GEO=GEO))
-    return render_template('update_product.html', message = message, GEO=GEO)
+    return render_template('update_product.html', message = message)
 
 @app.route('/update/get_data3', methods=['GET', 'POST'])
 def update_data3():
-    filepath = 'auto/new_data/'
+    filepath_update = 'auto/previous_data/'
+    filepath_new = 'auto/new_data'
+    filepath_store = 'auto/data'
+
     lastet_month = '11308'
-    df = get_data3(lastet_month)
-    df.to_excel(f'{filepath}/3_主要國家工業生產增加率.xlsx')
+
+    file_path = f'{filepath_update}/3_主要國家工業生產增加率.xlsx'
+    if not os.path.exists(file_path):
+        DF = get_data3(lastet_month, function_type = 0)
+        DF.to_excel(f'{filepath_update}/3_主要國家工業生產增加率.xlsx')
+    DF = pd.read_excel(f'{filepath_update}/3_主要國家工業生產增加率.xlsx')
+
+    df = get_data3(lastet_month, function_type = 1)
+    df.to_excel(f'{filepath_new}/3_主要國家工業生產增加率.xlsx')
+    df = pd.read_excel(f'{filepath_new}/3_主要國家工業生產增加率.xlsx')
+
+    if df.iloc[-1]['日期'] not in DF['日期'].values:
+        DF = pd.concat([DF,pd.DataFrame(df.iloc[-1]).T], axis = 0)
+    
+    DF.to_excel(f'{filepath_store}/3_主要國家工業生產增加率.xlsx', index = 0)
+    
     message = '更新完成: 工業生產增加率'
     return render_template('update_product.html', message = message)
 
@@ -187,7 +245,7 @@ def update_data5():
         if GEO not in df_update.keys():
             df_update[GEO] = {}
 
-        print(f"Processing data for {GEO}: {df_update[GEO]}")
+        # print(f"Processing data for {GEO}: {df_update[GEO]}")
 
         # 寫入到舊有的excel檔的不同sheet裡面
         path_new = f'{filepath}5_經濟數據_{GEO}.xlsx'
@@ -195,6 +253,7 @@ def update_data5():
 
             df = pd.read_excel(path_new) 
             index_names = df[df['總經種類'] == f'{updated_item}']['指標名稱'].values
+            print(index_names)
             
 
 
@@ -206,12 +265,12 @@ def update_data5():
                 if len(df_update[GEO][f'{tmp}_date']) > 0:
                     if df_update[GEO][f'{tmp}_date'][-1] == df[df['指標名稱'] == tmp]['公告日期'].values[0]:
                         print(GEO, tmp)
-                        break 
-                print(f"Updating {GEO}, {tmp} data...")       
+                        continue 
+                # print(f"Updating {GEO}, {tmp} data...")       
                 df_update[GEO][tmp].append(float(df[df['指標名稱'] == tmp]['Last'].values[0]))
                 df_update[GEO][f'{tmp}_date'].append(df[df['指標名稱'] == tmp]['公告日期'].values[0])
                 df_update[GEO][f'{tmp}_unit'].append(str(df[df['指標名稱'] == tmp]['單位'].values[0]))
-                print(f"Updated {GEO}: {df_update[GEO]}")
+                # print(f"Updated {GEO}: {df_update[GEO]}")
 
             json_data = json.dumps(df_update)
             with open(path_update, "w") as json_file:
@@ -392,6 +451,113 @@ def update_data8():
     return render_template('update_product.html', message=message)
 
 
+@app.route('/update/get_data9', methods=['GET', 'POST'])
+def update_data9():
+    filepath = 'auto/new_data/'
+    storepath = 'auto/data/'
+
+    # 9_1: 交易價格
+    get_data9_1()
+    # Load新data
+    try:
+        updatepath = 'auto/new_data/'
+        path_update = f'{updatepath}9_1原料價格.json'
+        jsonFile = open(path_update,'r')
+        f =  jsonFile.read()   # 要先使用 read 讀取檔案
+        df_update = json.loads(f)
+        jsonFile.close()
+    except:
+        df_update = {}
+
+    # 初始化變數
+    signal_first = 0
+    storepath = 'auto/data/'
+    path_store = f'{storepath}9_1原料價格.json'
+
+    # 檢查路徑是否存在，若不存在則建立路徑
+    os.makedirs(storepath, exist_ok=True)
+
+    # 讀取舊的 JSON 文件
+    try:
+        with open(path_store, 'r') as jsonFile:
+            df_store = json.load(jsonFile)
+    except FileNotFoundError:
+        # 若文件不存在，則初始化為空字典
+        signal_first = 1
+        df_store = {}
+    except json.JSONDecodeError:
+        # 若 JSON 格式錯誤，初始化為空字典
+        signal_first = 1
+        df_store = {}
+
+    if signal_first == 1:
+        df_store = df_update.copy()
+    else:
+        for key1 in df_update.keys():
+            for key2 in df_update[key1].keys():
+                for key3 in df_update[key1][key2].keys():
+                    if df_update[key1][key2][key3]['date'][0] in df_store[key1][key2][key3]['date']:
+                        break
+                    for key4 in df_update[key1][key2][key3].keys():
+                        for i in range(0,len(df_update[key1][key2][key3][key4])):
+                            df_store[key1][key2][key3][key4].append(df_update[key1][key2][key3][key4][i])
+
+    json_data = json.dumps(df_store)
+    with open(path_store, "w") as json_file:
+        json_file.write(json_data) 
+
+    # # 9_2: 交易量
+    # query = 'LME-Steel-Scrap-CFR-Turkey-Platts'
+    # df = get_data9_2(query)
+    # df.to_excel(f'{filepath}9_2_volume_{query}.xlsx')
+
+    # # 更新 json資料
+    # query = 'LME-Steel-Scrap-CFR-Turkey-Platts'
+    # datatypes = ['9_1','9_2']
+    # for datatype in datatypes:
+    #     if datatype == '9_1':
+    #         df = pd.read_excel(f'auto/new_data/{datatype}_price_{query}.xlsx', index_col = 0)
+    #     else:
+    #         df = pd.read_excel(f'auto/new_data/{datatype}_volume_{query}.xlsx', index_col = 0)
+
+    #     try:
+    #         updatepath = 'auto/data/'
+    #         path_update = f'{updatepath}{datatype}_{query}.json'
+    #         jsonFile = open(path_update,'r')
+    #         f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    #         df_update = json.loads(f)
+    #         jsonFile.close()
+    #     except:
+    #         df_update = {}
+
+    #     for i in range(0,len(df)):
+    #         if df.iloc[i].name not in df_update.keys():
+    #             df_update[df.iloc[i].name] = {}
+    #             df_update[df.iloc[i].name]['公布時間'] = []
+    #             if datatype == '9_1':
+    #                 df_update[df.iloc[i].name]['價格'] = []
+    #             else:
+    #                 df_update[df.iloc[i].name]['交易量'] = []
+    #                 df_update[df.iloc[i].name]['未平倉量'] = []
+
+    #         if df.iloc[i]['公布時間'] in  df_update[df.iloc[i].name]['公布時間']:
+    #             continue
+    #         df_update[df.iloc[i].name]['公布時間'].append(df.iloc[i]['公布時間'])
+    #         if datatype == '9_1':
+    #             df_update[df.iloc[i].name]['價格'].append(df.iloc[i]['價格'])
+    #         else:
+    #             df_update[df.iloc[i].name]['交易量'].append(float(df.iloc[i]['交易量']))
+    #             df_update[df.iloc[i].name]['未平倉量'].append(float(df.iloc[i]['未平倉量']))
+
+    #     json_data = json.dumps(df_update)
+    #     with open(path_update, "w") as json_file:
+    #         json_file.write(json_data)
+
+
+    message = f'更新完成: 鋼鐵價格資料'
+    return render_template('update_product.html', message=message)
+
+
 @app.route('/economic_analysis', methods=['GET', 'POST'])
 def economic_analysis():
     '''概況總覽'''
@@ -407,12 +573,28 @@ def economic_analysis():
     df12 = json.loads(f)      # 再使用 loads
     jsonFile.close()
     df12_labels = list(tmp for tmp in df12.keys())
-    print(df12_labels)
+    
+    '''TradingEconomics'''
+    jsonFile = open("auto/data/13_TradingEconomics.json",'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df13 = json.loads(f)      # 再使用 loads
+    jsonFile.close()
+    df13_labels = list(tmp for tmp in df13.keys())
 
+    '''中國汽車數據'''
+    updatepath = 'auto/data/'
+    path_update = f'{updatepath}14_中國汽車銷量.json'
+    jsonFile = open(path_update,'r')
+    f =  jsonFile.read()   # 要先使用 read 讀取檔案
+    df14 = json.loads(f)
+    jsonFile.close()
+    df14_labels = list(tmp for tmp in df14.keys())
 
     return render_template('economic_analysis.html',
                            df5_labels = df5_labels, df5 = df5,
-                           df12_labels = df12_labels, df12 = df12)
+                           df12_labels = df12_labels, df12 = df12, 
+                           df13_labels = df13_labels, df13 = df13,
+                           df14_labels = df14_labels, df14 = df14)
 
 @app.route('/update/get_data12', methods=['GET', 'POST'])
 def update_data12():
@@ -451,6 +633,47 @@ def update_data12():
     message = f'更新完成: SWIFT 資料'
     return render_template('update_economic.html', message=message)
 
+@app.route('/update/get_data13', methods=['GET', 'POST'])
+def update_data13():
+    querys = ['stocks','currencies', 'commodities', 'crypto', 'bonds']
+    for query in querys:
+        print(query)
+        get_data13(query)
+
+    message = f'更新完成: {query} 資料'
+    return render_template('update_economic.html', message = message)
+
+@app.route('/update/get_data14', methods=['GET', 'POST'])
+def update_data14():
+    get_data14()
+
+    data = pd.read_excel('auto/new_data/14_中國汽車銷量.xlsx', index_col=0)
+    try:
+        updatepath = 'auto/data/'
+        path_update = f'{updatepath}14_中國汽車銷量.json'
+        jsonFile = open(path_update,'r')
+        f =  jsonFile.read()   # 要先使用 read 讀取檔案
+        df_update = json.loads(f)
+        jsonFile.close()
+    except:
+        df_update = {}
+        
+    df_update['中國汽車銷量'] = {}
+    for i in range(0,len(data)):
+        for j in range(len(data.columns)):
+            if data.columns[j] not in df_update['中國汽車銷量'].keys():
+                df_update['中國汽車銷量'][data.columns[j]] = []
+            if j == 0:
+                if data[data.columns[j]].iloc[i] in df_update['中國汽車銷量'][data.columns[j]]:
+                    break
+            df_update['中國汽車銷量'][data.columns[j]].append(str(data[data.columns[j]].iloc[i]))
+
+    json_data = json.dumps(df_update)
+    with open(path_update, "w") as json_file:
+        json_file.write(json_data)
+
+    message = f'更新完成: 中國汽車銷量 資料'
+    return render_template('update_economic.html', message = message)
 
 
 

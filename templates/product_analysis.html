@@ -75,6 +75,21 @@
             background-color: #66B3FF;
             color: white;
         }
+
+        /* 新增選中項目的樣式 */
+        .selected-field {
+            background-color: #007BFF; /* 藍色背景 */
+            color: #FFFFFF; /* 白色文字 */
+            border: 1px solid #0056b3; /* 深藍色邊框 */
+        }
+
+        .selected-country {
+        background-color: #007BFF; /* 藍色背景 */
+        color: #FFFFFF; /* 白色文字 */
+        border: 1px solid #0056b3; /* 深藍色邊框 */
+        }
+
+
     </style>
 </head>
 
@@ -99,22 +114,42 @@
             <h3>公司佔台灣出口佔比</h3>
             <canvas id="pieChart"></canvas>
         </div>
-    </div>    
-
+    </div>  
+    
     <h2>各國產品搜索量</h2>
-    {% if GEO == "" %}
-    <form method="post" action="{{ url_for('update_data2') }}">
+    <form method="post" action="{{ url_for('update_data2') }}" id="productVolumeForm">
+        <input type="hidden" name="updated_item" id="productUpdatedItem">
         <p>
-            <input type="text" name="GEO" placeholder="Enter GEO">
-            <input type="submit" name="GEO" value="Submit">
+            <button type="button" onclick="submitProductVolumeUpdate('ProductVolume')">更新資料</button>
         </p>
     </form>
-    {% else %}
-        <p>國家:{{ GEO }}</p>
-        <div style="height:90%;width:90%;">
-            <canvas id="SEOChart"></canvas>
-        </div> 
-    {% endif %}
+
+    <div style="display: flex; justify-content: space-between;">
+        <!-- 左側：國家列表 -->
+        <div class="scrollable-container" id="productCountryList">
+            <h3>國家</h3>
+            {% for df2_label in df2_labels %}
+            <div class="item-box"
+                data-value="{{ df2[df2_label] | safe }}"
+                data-key="{{ df2[df2_label].keys() | list }}"
+                value="{{ df2_label | safe }}"
+                onclick="selectProductCountry(this)">
+                {{ df2_label | safe }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 中間：欄位列表 -->
+        <div class="scrollable-container" id="productFieldList">
+            <h3>欄位</h3>
+        </div>
+
+        <!-- 右側：折線圖 -->
+        <div style="width: 70%;">
+            <canvas id="productVolumeChart"></canvas>
+        </div>
+    </div>
+
     
     <h2>工業生產增加率</h2>
     <form method='post' action={{ url_for('update_data3') }}>
@@ -221,7 +256,42 @@
     <!-- Initially hidden image element -->
     <img id="dynamicImage" style="display: none;" alt="文字雲">
 
+    <h2>鋼鐵報價</h2>
+    <form method='post' action={{ url_for('update_data9') }}>
+        <p>
+            <button type='submit'>更新資料</button>
+        </p>
+    </form>
+    
+    <div style="display: flex; justify-content: space-between;">
+        <!-- 左側：鋼鐵種類列表 -->
+        <div class="scrollable-container" id="metalTypeList">
+            <h3>鋼鐵種類</h3>
+            {% for df9_1_label in df9_1_labels %}
+            <div class="item-box"
+                data-value="{{ df9_1[df9_1_label] | safe }}"
+                data-key="{{ df9_1[df9_1_label].keys() | list }}"
+                value="{{ df9_1_label | safe }}"
+                onclick="selectMetalType(this)">
+                {{ df9_1_label | safe }}
+            </div>
+            {% endfor %}
+        </div>
+    
+        <!-- 中間：欄位列表 -->
+        <div class="scrollable-container" id="metalFieldList">
+            <h3>欄位</h3>
+        </div>
+    
+        <!-- 右側：折線圖 -->
+        <div style="width: 70%;">
+            <canvas id="metalVolumeChart"></canvas>
+        </div>
+    </div>
+    
 
+
+    </div>
 
 
     <!-- 引入 Chart.js -->
@@ -314,44 +384,182 @@
 
     <!-- data2 -->
     <script>
-        const data_indexes = {{data_indexes | safe}}
-        const data_controller = {{data_controller | safe}}
-        // const data_machine = {{data_machine | safe}}
-        const label_2_1 = {{label_2_1 | safe}}
-        const label_2_2 = {{label_2_2 | safe}}
-        const SEOchartElement = document.getElementById('SEOChart');
-        
-        if (SEOchartElement) {  // Ensure the canvas element exists
-            const context = SEOchartElement.getContext('2d');
-            
-            if (context) {  // Ensure context is acquired
-                new Chart(context, {
-                    data: {
-                        labels: data_indexes,  // Ensure data_indexes is defined
-                        datasets: [
-                            {
-                                type: 'line',
-                                label: label_2_1,  // Ensure label_2_1 is defined
-                                data: data_controller,  // Ensure data_controller is defined
-                                borderColor: 'blue',
-                                backgroundColor: 'rgba(0, 0, 255, 0.1)',
-                            },
-                            // {
-                            //     type: 'line',
-                            //     label: label_2_2,  // Ensure label_2_2 is defined
-                            //     data: data_machine,  // Ensure data_machine is defined
-                            //     borderColor: 'green',
-                            //     backgroundColor: 'rgba(0, 255, 0, 0.1)',
-                            // }
-                        ]
-                    }
-                });
+        // 儲存已選擇的國家和欄位資料
+        const selectedProductCountries = [];
+        const selectedProductFields = [];
+
+        // 選擇國家並顯示對應的欄位
+        function selectProductCountry(item) {
+            const fieldContainer = document.getElementById('productFieldList');
+            let fieldKeys = item.getAttribute('data-key');
+            fieldKeys = fieldKeys.replace(/'/g, '"');
+
+            try {
+                fieldKeys = JSON.parse(fieldKeys);
+            } catch (error) {
+                fieldKeys = fieldKeys.split(',');
+            }
+
+            const countryLabel = item.getAttribute('value');
+            const countryData = item.getAttribute('data-value');
+            const existingIndex = selectedProductCountries.findIndex(selected => selected.label === countryLabel && JSON.stringify(selected.data) === JSON.stringify(countryData));
+
+            if (existingIndex > -1) {
+                item.classList.remove('selected-country');
+                selectedProductCountries.splice(existingIndex, 1);
+                removeProductFields(countryLabel);
             } else {
-                console.error('Failed to acquire context for SEOChart.');
+                item.classList.add('selected-country');
+                selectedProductCountries.push({ label: countryLabel, data: countryData });
+                displayProductFields(fieldKeys, countryLabel);
             }
         }
+
+        // 顯示對應欄位列表
+        function displayProductFields(keys, countryLabel) {
+            const fieldContainer = document.getElementById('productFieldList');
+            const productData = {{ df2 | safe }};
+
+            keys.forEach(key => {
+                if (!key.includes('unit') && !key.includes('date')) {
+                    const fieldItem = document.createElement('div');
+                    fieldItem.className = 'item-box';
+                    fieldItem.textContent = `${countryLabel} - ${key}`;
+                    fieldItem.dataset.key = key;
+                    fieldItem.dataset.label = countryLabel;
+                    fieldItem.dataset.value = JSON.stringify(productData[countryLabel][key]);
+                    fieldItem.dataset.dates = JSON.stringify(productData[countryLabel][`${key}_date`]);
+
+                    fieldItem.addEventListener('click', () => {
+                        const fieldData = JSON.parse(fieldItem.getAttribute('data-value'));
+                        const fieldLabel = `${countryLabel} - ${key}`;
+                        const existingIndex = selectedProductFields.findIndex(field => field.label === fieldLabel && JSON.stringify(field.data) === JSON.stringify(fieldData));
+
+                        if (existingIndex > -1) {
+                            fieldItem.classList.remove('selected-field');
+                            selectedProductFields.splice(existingIndex, 1);
+                        } else {
+                            fieldItem.classList.add('selected-field');
+                            selectedProductFields.push({ label: fieldLabel, data: fieldData, dates: fieldItem.dataset.dates });
+                        }
+
+                        updateProductVolumeChart(selectedProductFields);
+                    });
+
+                    fieldContainer.appendChild(fieldItem);
+                }
+            });
+        }
+
+        // 移除欄位並更新圖表
+        function removeProductFields(countryLabel) {
+            const fieldContainer = document.getElementById('productFieldList');
+            const fieldsToRemove = fieldContainer.querySelectorAll(`.item-box[data-label='${countryLabel}']`);
+
+            fieldsToRemove.forEach(item => {
+                const fieldLabel = `${countryLabel} - ${item.dataset.key}`;
+                const existingIndex = selectedProductFields.findIndex(field => field.label === fieldLabel);
+                if (existingIndex > -1) {
+                    selectedProductFields.splice(existingIndex, 1);
+                }
+                fieldContainer.removeChild(item);
+            });
+
+            updateProductVolumeChart(selectedProductFields);
+        }
+
+        // 更新折線圖
+        function updateProductVolumeChart(selectedFields) {
+            const uniqueDates = new Set();
+            selectedFields.forEach(field => {
+                let fieldDates;
+                try {
+                    fieldDates = JSON.parse(field.dates);
+                    fieldDates.forEach(date => uniqueDates.add(date));
+                } catch (error) {
+                    console.error("Error parsing dates:", error);
+                }
+            });
+
+            const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b));
+            const datasets = selectedFields.map(field => {
+                let fieldDates, fieldData;
+                try {
+                    fieldDates = JSON.parse(field.dates);
+                    fieldData = field.data;
+                } catch (error) {
+                    console.error("Error parsing field data:", error);
+                }
+
+                const alignedData = sortedDates.map(date => {
+                    const index = fieldDates ? fieldDates.indexOf(date) : -1;
+                    return index !== -1 ? fieldData[index] : null;
+                });
+
+                return {
+                    label: field.label,
+                    data: alignedData,
+                    fill: false,
+                    borderColor: getRandomColor(),
+                    tension: 0.1,
+                };
+            });
+
+            const chartContext = document.getElementById('productVolumeChart').getContext('2d');
+            if (window.productVolumeChartInstance) {
+                window.productVolumeChartInstance.destroy();
+            }
+
+            window.productVolumeChartInstance = new Chart(chartContext, {
+                type: 'line',
+                data: {
+                    labels: sortedDates,
+                    datasets: datasets,
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time Period',
+                            },
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Search Volume',
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        // 隨機顏色生成
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // 提交更新表單
+        function submitProductVolumeUpdate(value) {
+            document.getElementById('productUpdatedItem').value = value;
+            document.getElementById('productVolumeForm').submit();
+        }
+
     </script>
 
+    <!-- data3 -->
     <script>
         const indexs_3 = {{indexs_3 | safe}}
         const label_3 = {{label_3 | safe}}
@@ -646,28 +854,6 @@
             });
         });
     
-        // // 文字雲 (Word Cloud) Buttons - Allow multiple selections across rows, only one per row
-        // function toggleSelection(buttonGroupClass, button) {
-        //     // Deselect all buttons in the same row (or button group)
-        //     document.querySelectorAll(`.${buttonGroupClass} .btn`).forEach(btn => btn.classList.remove('btn-secondary'));
-        //     // Select the clicked button
-        //     button.classList.add('btn-secondary');
-        // }
-    
-        // // Word Cloud Company and Index Buttons
-        // document.querySelectorAll('.btn-group[aria-label="Company Selection"] .btn').forEach(button => {
-        //     button.addEventListener('click', function() {
-        //         toggleSelection('Company Selection', this);
-        //         setCompany(this.innerText.toLowerCase());
-        //     });
-        // });
-    
-        // document.querySelectorAll('.btn-group[aria-label="Index Selection"] .btn').forEach(button => {
-        //     button.addEventListener('click', function() {
-        //         toggleSelection('Index Selection', this);
-        //         setIndex(this.innerText.toLowerCase());
-        //     });
-        // });
     </script>
     
 
@@ -853,6 +1039,178 @@
         }
     </script>
     
+
+<!-- data9_1 -->
+<script>
+    // 儲存已選擇的鋼鐵種類和欄位資料
+    const selectedMetalTypes = [];
+    const selectedMetalFields = [];
+
+    // 選擇鋼鐵種類並顯示對應的欄位
+    function selectMetalType(item) {
+        const fieldContainer = document.getElementById('metalFieldList');
+        let fieldKeys = item.getAttribute('data-key');
+        fieldKeys = fieldKeys.replace(/'/g, '"');
+
+        try {
+            fieldKeys = JSON.parse(fieldKeys);
+        } catch (error) {
+            fieldKeys = fieldKeys.split(',');
+        }
+
+        const metalLabel = item.getAttribute('value');
+        const metalData = item.getAttribute('data-value');
+        const existingIndex = selectedMetalTypes.findIndex(selected => selected.label === metalLabel && JSON.stringify(selected.data) === JSON.stringify(metalData));
+
+        if (existingIndex > -1) {
+            item.classList.remove('selected-country');
+            selectedMetalTypes.splice(existingIndex, 1);
+            removeMetalFields(metalLabel);
+        } else {
+            item.classList.add('selected-country');
+            selectedMetalTypes.push({ label: metalLabel, data: metalData });
+            displayMetalFields(fieldKeys, metalLabel);
+        }
+    }
+
+    // 顯示對應欄位列表
+    function displayMetalFields(keys, metalLabel) {
+        const fieldContainer = document.getElementById('metalFieldList');
+        const metalData = {{ df9_1 | safe }};
+
+        keys.forEach(key => {
+            if (!key.includes('unit') && !key.includes('date')) {
+                const fieldItem = document.createElement('div');
+                fieldItem.className = 'item-box';
+                fieldItem.textContent = `${metalLabel} - ${key}`;
+                fieldItem.dataset.key = key;
+                fieldItem.dataset.label = metalLabel;
+                fieldItem.dataset.value = JSON.stringify(metalData[metalLabel][key]);
+                fieldItem.dataset.dates = JSON.stringify(metalData[metalLabel][`${key}_date`]);
+
+                fieldItem.addEventListener('click', () => {
+                    const fieldData = JSON.parse(fieldItem.getAttribute('data-value'));
+                    const fieldLabel = `${metalLabel} - ${key}`;
+                    const existingIndex = selectedMetalFields.findIndex(field => field.label === fieldLabel && JSON.stringify(field.data) === JSON.stringify(fieldData));
+
+                    if (existingIndex > -1) {
+                        fieldItem.classList.remove('selected-field');
+                        selectedMetalFields.splice(existingIndex, 1);
+                    } else {
+                        fieldItem.classList.add('selected-field');
+                        selectedMetalFields.push({ label: fieldLabel, data: fieldData, dates: fieldItem.dataset.dates });
+                    }
+
+                    updateMetalVolumeChart(selectedMetalFields);
+                });
+
+                fieldContainer.appendChild(fieldItem);
+            }
+        });
+    }
+
+    // 移除欄位並更新圖表
+    function removeMetalFields(metalLabel) {
+        const fieldContainer = document.getElementById('metalFieldList');
+        const fieldsToRemove = fieldContainer.querySelectorAll(`.item-box[data-label='${metalLabel}']`);
+
+        fieldsToRemove.forEach(item => {
+            const fieldLabel = `${metalLabel} - ${item.dataset.key}`;
+            const existingIndex = selectedMetalFields.findIndex(field => field.label === fieldLabel);
+            if (existingIndex > -1) {
+                selectedMetalFields.splice(existingIndex, 1);
+            }
+            fieldContainer.removeChild(item);
+        });
+
+        updateMetalVolumeChart(selectedMetalFields);
+    }
+
+    // 更新折線圖
+    function updateMetalVolumeChart(selectedFields) {
+        const uniqueDates = new Set();
+        selectedFields.forEach(field => {
+            let fieldDates;
+            try {
+                fieldDates = JSON.parse(field.dates);
+                fieldDates.forEach(date => uniqueDates.add(date));
+            } catch (error) {
+                console.error("Error parsing dates:", error);
+            }
+        });
+
+        const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b));
+        const datasets = selectedFields.map(field => {
+            let fieldDates, fieldData;
+            try {
+                fieldDates = JSON.parse(field.dates);
+                fieldData = field.data;
+            } catch (error) {
+                console.error("Error parsing field data:", error);
+            }
+
+            const alignedData = sortedDates.map(date => {
+                const index = fieldDates ? fieldDates.indexOf(date) : -1;
+                return index !== -1 ? fieldData[index] : null;
+            });
+
+            return {
+                label: field.label,
+                data: alignedData,
+                fill: false,
+                borderColor: getRandomColor(),
+                tension: 0.1,
+            };
+        });
+
+        const chartContext = document.getElementById('metalVolumeChart').getContext('2d');
+        if (window.metalVolumeChartInstance) {
+            window.metalVolumeChartInstance.destroy();
+        }
+
+        window.metalVolumeChartInstance = new Chart(chartContext, {
+            type: 'line',
+            data: {
+                labels: sortedDates,
+                datasets: datasets,
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time Period',
+                        },
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Metal Price',
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    // 隨機顏色生成
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+
+</script>
 
 </body>
 
