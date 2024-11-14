@@ -32,10 +32,77 @@
             margin: 0;
             border-bottom: 1px solid #ddd;
         }
+
+        /* 按鈕樣式 */
+        button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            color: #000;
+        }
+
+        /* 選取狀態樣式 */
+        button.selected {
+            background-color: #66B3FF; /* 綠色背景表示已選取 */
+            color: #fff; /* 白色文字 */
+        }
+
     </style>
 </head>
 <body>
-    <h1>經濟分析</h1>
+    <h1>經濟分析</h1>    
+    
+    <h2>IMD競爭力指標</h2>
+        <form method='post' action={{ url_for('update_data6') }}>
+            <p>
+            <button type='submit'>更新資料</button>
+            </p>
+        </form>
+    <!-- 顯示國家與項目提供選取(Graph1, Graph2的上方) -->
+    <h2>IMD 競爭力指標選擇</h2>
+
+    <!-- 國家選擇 (按鈕形式，支援多選) -->
+    <label for="countrySelect">選擇國家：</label>
+    <div id="countrySelect">
+        <button type="button" class="country-btn" data-value="china">China</button>
+        <button type="button" class="country-btn" data-value="india">India</button>
+        <button type="button" class="country-btn" data-value="malaysia">Malaysia</button>
+        <button type="button" class="country-btn" data-value="usa">USA</button>
+    </div>
+    
+    <!-- 指標選擇 (按鈕形式，支援多選) -->
+    <label for="indicatorSelect">選擇指標：</label>
+    <div id="indicatorSelect">
+        <button type="button" class="indicator-btn" data-value="Economic Performance">Economic Performance</button>
+        <button type="button" class="indicator-btn" data-value="Government Efficiency">Government Efficiency</button>
+        <button type="button" class="indicator-btn" data-value="Business Efficiency">Business Efficiency</button>
+        <button type="button" class="indicator-btn" data-value="Infrastructure">Infrastructure</button>
+    </div>
+
+
+
+    
+    <div style="display: flex; justify-content: space-between;">
+        <!-- Graph1: 競爭力指標Ranking, x: 年分, y: ranking -->
+        <div style="width:50%">
+            <h2>IMD 競爭力指標 Ranking</h2>
+            <canvas id="rankingChart"></canvas>
+        </div>
+    
+        <!-- Graph2: 競爭力指標Score, x: 年分, y: score -->
+        <div style="width:50%">
+            <h2>IMD 競爭力指標 Score</h2>
+            <canvas id="scoreChart"></canvas>
+        </div>
+    </div>
+    
+
+
+    
+
     <h2>各國經濟總覽</h2>
         <form method="post" action="{{ url_for('update_data5') }}" id="updateForm">
             <input type="hidden" name="updated_item" id="updated_item">
@@ -109,6 +176,19 @@
                 <canvas id="selectionChart2"></canvas>
             </div>
         </div>
+    
+    <h2>各機場航空吞吐量</h2>
+        <form method='post' action={{ url_for('update_data10') }}>
+            <p>
+            <button type='submit'>更新資料</button>
+            </p>
+        </form>
+        <!-- 各機場航空吞吐量折線圖: x:時間, y: 數量 -->
+        <div style="width: 80%">
+            <canvas id="airportTrafficChart"></canvas>
+        </div>
+        
+
 
     <h2>中國汽車銷量</h2>
     <form method='post' action={{ url_for('update_data14') }}>
@@ -122,6 +202,145 @@
     
 
 </body>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- IMD 競爭力指標 -->
+<script>
+    const df6 = {{ df6 | safe }};
+    const countries = Object.keys(df6);
+    const indicators = ["Economic Performance", "Government Efficiency", "Business Efficiency", "Infrastructure"];
+    const years = df6[countries[0]]["Economic Performance_time"];
+
+    const countrySelect = document.getElementById("countrySelect");
+    const indicatorSelect = document.getElementById("indicatorSelect");
+
+    const rankingCtx = document.getElementById('rankingChart').getContext('2d');
+    const scoreCtx = document.getElementById('scoreChart').getContext('2d');
+    let rankingChart;
+    let scoreChart;
+
+    // 選取的國家和指標列表
+    const selectedCountries = [];
+    const selectedIndicators = [];
+
+    // 監聽國家按鈕點擊事件
+    document.querySelectorAll('.country-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const value = button.getAttribute('data-value');
+
+            // 切換按鈕選取狀態
+            if (selectedCountries.includes(value)) {
+                // 取消選取
+                button.classList.remove('selected');
+                const index = selectedCountries.indexOf(value);
+                selectedCountries.splice(index, 1);
+            } else {
+                // 選取
+                button.classList.add('selected');
+                selectedCountries.push(value);
+            }
+
+            // 更新圖表
+            updateCharts();
+        });
+    });
+
+    // 監聽指標按鈕點擊事件
+    document.querySelectorAll('.indicator-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const value = button.getAttribute('data-value');
+
+            // 切換按鈕選取狀態
+            if (selectedIndicators.includes(value)) {
+                // 取消選取
+                button.classList.remove('selected');
+                const index = selectedIndicators.indexOf(value);
+                selectedIndicators.splice(index, 1);
+            } else {
+                // 選取
+                button.classList.add('selected');
+                selectedIndicators.push(value);
+            }
+
+            // 更新圖表
+            updateCharts();
+        });
+    });
+
+    // 更新圖表
+    function updateCharts() {
+        const rankingDatasets = [];
+        const scoreDatasets = [];
+
+        selectedCountries.forEach(country => {
+            selectedIndicators.forEach(indicator => {
+                const rankingData = df6[country][indicator];
+                const scoreData = df6[country][`${indicator}_score`];
+                const scoreTime = df6[country][`${indicator}_score_time`];
+
+                rankingDatasets.push({
+                    label: `${country} - ${indicator}`,
+                    data: rankingData,
+                    fill: false,
+                    borderColor: getRandomColor(),
+                    tension: 0.1
+                });
+
+                scoreDatasets.push({
+                    label: `${country} - ${indicator} Score (${scoreTime[0]})`,
+                    data: Array(years.length - 1).fill(null).concat(scoreData),
+                    fill: false,
+                    borderColor: getRandomColor(),
+                    tension: 0.1,
+                    borderDash: [5, 5]
+                });
+            });
+        });
+
+        // 更新 Ranking 圖表
+        if (rankingChart) rankingChart.destroy();
+        rankingChart = new Chart(rankingCtx, {
+            type: 'line',
+            data: {
+                labels: years,
+                datasets: rankingDatasets
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Year' } },
+                    y: { reverse: true, title: { display: true, text: 'Ranking (Lower is Better)' } }
+                }
+            }
+        });
+
+        // 更新 Score 圖表
+        if (scoreChart) scoreChart.destroy();
+        scoreChart = new Chart(scoreCtx, {
+            type: 'line',
+            data: {
+                labels: years,
+                datasets: scoreDatasets
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Year' } },
+                    y: { beginAtZero: true, title: { display: true, text: 'Score (Higher is Better)' } }
+                }
+            }
+        });
+    }
+
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+</script>
 
 <!-- 各國經濟總覽 -->
 <script>
@@ -214,7 +433,6 @@
     }
         
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const selectedItems2 = [];
         const itemBoxes = document.querySelectorAll('#sortable2 .item-box');
@@ -329,13 +547,85 @@
             }
         </script>
 
+<!-- 各機場航空吞吐量 -->
+<!-- 各機場航空吞吐量折線圖 -->
+<script>
+    const atc = document.getElementById('airportTrafficChart').getContext('2d');
+    const df10 = {{ df10 | safe }};
+
+    // 機場代號與中文名稱映射
+    const airportNames = {
+        'PVG': 'China：上海浦東國際機場',
+        'KUL': 'Malaysia：吉隆坡國際機場',
+        'DEL': 'India：德里英迪拉甘地國際機場',
+        'IST': 'Turkey：伊斯坦堡機場',
+        'DXB': 'Dubai：杜拜國際機場',
+        'DEN': 'US：丹佛國際機場'
+    };
+
+    // 提取機場代號（去除包含 '_時間' 的鍵）
+    const airports = Object.keys(df10).filter(key => !key.includes('_時間'));
+    
+    // 提取時間標籤，假設所有機場時間點相同，使用第一個機場的時間作為標籤
+    const timeLabels1 = df10[`${airports[0]}_時間`];
+
+    // 準備資料集，將代號替換為中文名稱
+    const datasets = airports.map(airport => {
+        return {
+            label: airportNames[airport],  // 使用中文名稱作為標籤
+            data: df10[airport].map(value => parseInt(value, 10)),
+            fill: false,
+            borderColor: getRandomColor(),
+            tension: 0.1
+        };
+    });
+
+    // 定義折線圖
+    const airportTrafficChart = new Chart(atc, {
+        type: 'line',
+        data: {
+            labels: timeLabels1,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: '時間'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '航空吞吐量'
+                    }
+                }
+            }
+        }
+    });
+
+    // 隨機產生顏色的函數
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+</script>
+
+
 <!-- 各國Swift占比 -->
  <script>
     let ctx = document.getElementById("myChart3");
     let df12 = {{ df12 | tojson }};
     let currencyLabels = {{ df12_labels | tojson }};
 
-    console.log(currencyLabels)
+    // console.log(currencyLabels)
 
     // Extract unique time labels from df12 data
     let timeLabelsSet = new Set();
@@ -345,7 +635,7 @@
     let timeLabels = Array.from(timeLabelsSet).sort();  // Convert set to sorted array
 
     // Prepare datasets for each currency with percentages aligned to timeLabels
-    let datasets = currencyLabels.map(label => {
+    let datasets1 = currencyLabels.map(label => {
         let data = timeLabels.map(time => {
             let timeIndex = df12[label]["時間"].indexOf(time);
             return timeIndex !== -1 ? parseFloat(df12[label]["SWIFT占比"][timeIndex].replace("%", "")) : 0;
@@ -362,7 +652,7 @@
         type: 'bar',
         data: {
             labels: timeLabels,
-            datasets: datasets
+            datasets: datasets1
         },
         options: {
             scales: {
@@ -516,85 +806,23 @@
     }
 </script>
 
-<!-- 中國汽車銷量 -->
-<!-- <script>
-    console.log({{df14 | safe}})
-    const df14 = {{df14 | safe}}
-    const indexs_14 = {{df14['中國汽車銷量']['时间'] | safe}}
-    const label_14 = Object.keys(df14['中國汽車銷量']).slice(1)
-    console.log(label_14)
-    const data14 = {{df14['中國汽車銷量'] | safe}}
 
-    const cc = document.getElementById('chartContainer').getContext('2d');
-    
-    // Prepare datasets for each country
-    const datasets14 = label_14.map(country => ({
-        label: country,
-        data: data14[country],
-        fill: false,
-        borderColor: getRandomColor(),
-        tension: 0.1
-    }));
-
-    console.log(datasets14)
-
-    // Function to generate random colors for each line
-    function getRandomColor() {
-        const letters = '0123456789ABCDEF';
-        let color = '#';
-        for (let i = 0; i < 6; i++) {
-            color += letters[Math.floor(Math.random() * 16)];
-        }
-        return color;
-    }
-
-    // Create the chart
-    new Chart(cc, {
-        type: 'line',
-        data: {
-            labels: indexs_14, // X-axis (e.g., time periods)
-            datasets: datasets14
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Time Period'
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Value'
-                    }
-                }
-            }
-        }
-    });
-</script> -->
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dual Y-Axis Chart</title>
+    <title>經濟分析</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <canvas id="dualYAxisChart" width="800" height="400"></canvas>
     <script>
-        console.log({{df14 | safe}})
+        // console.log({{df14 | safe}})
         const df14 = {{df14 | safe}}
         const indexs_14 = {{df14['中國汽車銷量']['时间'] | safe}}
         const label_14 = Object.keys(df14['中國汽車銷量']).slice(1)
-        console.log(label_14)
+        // console.log(label_14)
         const data14 = {{df14['中國汽車銷量'] | safe}}
         const cc = document.getElementById('dualYAxisChart').getContext('2d');
 

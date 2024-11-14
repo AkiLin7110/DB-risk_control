@@ -89,6 +89,40 @@
         border: 1px solid #0056b3; /* 深藍色邊框 */
         }
 
+        .selected-item {
+            background-color: #007BFF; /* 藍色背景 */
+            color: #FFFFFF; /* 白色文字 */
+            border: 1px solid #0056b3; /* 深藍色邊框 */
+        }
+
+        /* 標題固定樣式 */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2; /* 淺灰色背景 */
+            padding: 10px;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+            z-index: 1; /* 保持在列表內容上層 */
+        }
+        
+        /* 按鈕樣式 */
+        button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            color: #000;
+        }
+
+        /* 選取狀態樣式 */
+        button.selected {
+            background-color: #66B3FF; /* 綠色背景表示已選取 */
+            color: #fff; /* 白色文字 */
+        }
+
 
     </style>
 </head>
@@ -256,40 +290,77 @@
     <!-- Initially hidden image element -->
     <img id="dynamicImage" style="display: none;" alt="文字雲">
 
-    <h2>鋼鐵報價</h2>
+    <h2>金屬市場數據分析</h2>
     <form method='post' action={{ url_for('update_data9') }}>
         <p>
             <button type='submit'>更新資料</button>
         </p>
     </form>
     
+    <h3>價格</h3>
     <div style="display: flex; justify-content: space-between;">
-        <!-- 左側：鋼鐵種類列表 -->
-        <div class="scrollable-container" id="metalTypeList">
-            <h3>鋼鐵種類</h3>
-            {% for df9_1_label in df9_1_labels %}
-            <div class="item-box"
-                data-value="{{ df9_1[df9_1_label] | safe }}"
-                data-key="{{ df9_1[df9_1_label].keys() | list }}"
-                value="{{ df9_1_label | safe }}"
-                onclick="selectMetalType(this)">
-                {{ df9_1_label | safe }}
-            </div>
-            {% endfor %}
+        <!-- 第一欄：金屬類型 -->
+        <div class="scrollable-container" id="metalCategoryList">
+            <h3 class="sticky-header">金屬類型</h3>
+            <div id="metalCategoryContent"></div>
         </div>
     
-        <!-- 中間：欄位列表 -->
-        <div class="scrollable-container" id="metalFieldList">
-            <h3>欄位</h3>
+        <!-- 第二欄：金屬名稱 -->
+        <div class="scrollable-container" id="metalNameList">
+            <h3 class="sticky-header">金屬名稱</h3>
+            <div id="metalNameContent"></div>
         </div>
     
-        <!-- 右側：折線圖 -->
-        <div style="width: 70%;">
+        <!-- 第三欄：數據類型 -->
+        <div class="scrollable-container" id="metalDataTypeList">
+            <h3 class="sticky-header">數據類型</h3>
+            <div id="metalDataTypeContent"></div>
+        </div>
+
+        <!-- 第四欄：數據報價日期 -->
+        <div class="scrollable-container" id="metalDateList">
+            <h3 class="sticky-header">數據報價日期</h3>
+            <div id="metalDateContent"></div>
+        </div>
+
+
+        <!-- 折線圖顯示區 -->
+        <!-- x軸: 各個contract, y軸: bid, ask, price -->
+        <div style="width: 100%">
+            <canvas id="metalDataChart"></canvas>
+        </div>
+    </div>
+
+    <h3>交易量</h3>
+    <div style="display: flex; justify-content: space-between;">
+        <!-- 第一欄：金屬類型 -->
+        <div class="scrollable-container" id="metalCategoryList2">
+            <h3 class="sticky-header">金屬類型</h3>
+            <div id="metalCategoryContent2"></div>
+        </div>
+
+        <!-- 第二欄：金屬名稱 -->
+        <div class="scrollable-container" id="metalNameList2">
+            <h3 class="sticky-header">金屬名稱</h3>
+            <div id="metalNameContent2"></div>
+        </div>
+
+        <!-- 第三欄：數據報價日期 -->
+        <div class="scrollable-container" id="metalDateList2">
+            <h3 class="sticky-header">數據報價日期</h3>
+            <div id="metalDateContent2"></div>
+        </div>
+
+        <!-- 折線圖顯示區 -->
+        <div style="width: 100%">
             <canvas id="metalVolumeChart"></canvas>
         </div>
     </div>
+
     
 
+    
+    
 
     </div>
 
@@ -869,7 +940,6 @@
     
             // Retrieve the data passed from the backend
             data_type = df7_value['index'];
-            console.log(data_type)
             const df7 = {{df7 | safe}}[data_type];
     
             // Traverse through the data object
@@ -896,11 +966,7 @@
                     });
                 }
             }
-    
-            // Log the arrays to check their structure
-            console.log("Index Array: ", indexArray);
-            console.log("Label Array: ", labelArray);
-            console.log("Value Array: ", valueArray);
+
     
             // Get the chart context
             const sc = document.getElementById('shipping_chart').getContext('2d');
@@ -1042,136 +1108,159 @@
 
 <!-- data9_1 -->
 <script>
-    // 儲存已選擇的鋼鐵種類和欄位資料
-    const selectedMetalTypes = [];
-    const selectedMetalFields = [];
+    // 儲存已選擇的項目
+    let selectedCategory = null;
+    let selectedMetal = null;
+    let selectedDataType = null;
+    let selectedData = [];
 
-    // 選擇鋼鐵種類並顯示對應的欄位
-    function selectMetalType(item) {
-        const fieldContainer = document.getElementById('metalFieldList');
-        let fieldKeys = item.getAttribute('data-key');
-        fieldKeys = fieldKeys.replace(/'/g, '"');
+    // 初始化金屬類型列表
+    function initMetalCategoryList(data) {
+        // console.log(data)
+        const categoryContent = document.getElementById('metalCategoryContent');
+        categoryContent.innerHTML = '';
 
-        try {
-            fieldKeys = JSON.parse(fieldKeys);
-        } catch (error) {
-            fieldKeys = fieldKeys.split(',');
+        Object.keys(data).forEach(category => {
+            const item = document.createElement('div');
+            item.className = 'item-box';
+            item.textContent = category;
+            item.addEventListener('click', () => selectCategory(item, category, data[category]));
+            categoryContent.appendChild(item);
+        });
+    }
+
+    // 選擇金屬類型
+    function selectCategory(item, category, metals) {
+        clearSelection('metalCategoryContent');
+        item.classList.add('selected-item');
+
+        selectedCategory = category;
+        selectedMetal = null;
+        selectedDataType = null;
+
+        const metalNameContent = document.getElementById('metalNameContent');
+        metalNameContent.innerHTML = '';
+
+        Object.keys(metals).forEach(metal => {
+            const metalItem = document.createElement('div');
+            metalItem.className = 'item-box';
+            metalItem.textContent = metal;
+            metalItem.addEventListener('click', () => selectMetal(metalItem, metal, metals[metal]));
+            metalNameContent.appendChild(metalItem);
+        });
+    }
+
+    // 選擇金屬名稱
+    function selectMetal(item, metal, dataTypes) {
+        clearSelection('metalNameContent');
+        item.classList.add('selected-item');
+
+        selectedMetal = metal;
+        selectedDataType = null;
+
+        const dataTypeContent = document.getElementById('metalDataTypeContent');
+        dataTypeContent.innerHTML = '';
+
+        Object.keys(dataTypes).forEach(dataType => {
+            const dataTypeItem = document.createElement('div');
+            dataTypeItem.className = 'item-box';
+            dataTypeItem.textContent = dataType;
+            // console.log('dataTypes', dataTypes)
+            dataTypeItem.addEventListener('click', () => selectDataType(dataTypeItem, dataType, dataTypes[dataType]));
+            dataTypeContent.appendChild(dataTypeItem);
+        });
+    }
+
+    // 選擇數據類型
+    function selectDataType(item, dataType, data) {
+        clearSelection('metalDataTypeContent');
+        item.classList.add('selected-item');
+
+        selectedDataType = dataType;
+        selectedData = data;
+        // console.log('selectedData', selectedData)
+
+        const dateContent = document.getElementById('metalDateContent');
+        dateContent.innerHTML = '';
+
+        // 去重日期列表
+        const uniqueDates = Array.from(new Set(data.date || []));
+
+        // 顯示去重後的日期列表
+        uniqueDates.forEach((date) => {
+            const dateItem = document.createElement('div');
+            dateItem.className = 'item-box';
+            dateItem.textContent = date;
+            dateItem.addEventListener('click', () => selectDate(dateItem, date));
+            dateContent.appendChild(dateItem);
+        });
+
+        // 默認顯示第一天的數據
+        if (uniqueDates.length > 0) {
+            selectDate(dateContent.firstChild, uniqueDates[0]);
         }
+    }
 
-        const metalLabel = item.getAttribute('value');
-        const metalData = item.getAttribute('data-value');
-        const existingIndex = selectedMetalTypes.findIndex(selected => selected.label === metalLabel && JSON.stringify(selected.data) === JSON.stringify(metalData));
+    // 選擇日期
+    function selectDate(item, selectedDate) {
+        clearSelection('metalDateContent');
+        item.classList.add('selected-item');
 
-        if (existingIndex > -1) {
-            item.classList.remove('selected-country');
-            selectedMetalTypes.splice(existingIndex, 1);
-            removeMetalFields(metalLabel);
+        // 根據所選日期篩選數據
+        const filteredData = {};
+
+        if (selectedDataType.toLowerCase().endsWith("opening stocks"))  {
+            // 處理 "opening stocks" 類型的數據
+            const stocks = selectedData.STOCKS || [];
+            const amounts = selectedData.AMOUNT || [];
+            
+            filteredData['AMOUNT'] = amounts.filter((_, index) => selectedData.date[index] === selectedDate);
+
+            // 更新折線圖，X 軸為 STOCKS，Y 軸為 AMOUNT
+            updateChart1(stocks, filteredData, 'STOCKS', 'AMOUNT');
         } else {
-            item.classList.add('selected-country');
-            selectedMetalTypes.push({ label: metalLabel, data: metalData });
-            displayMetalFields(fieldKeys, metalLabel);
+            // 處理其他數據類型
+            const filteredContracts = selectedData.CONTRACT || [];
+
+            ["BID", "OFFER", "PRICE","Price"].forEach((key) => {
+ 
+                if (Array.isArray(selectedData[key])) {
+                    filteredData[key] = selectedData[key].filter((_, index) => selectedData.date[index] === selectedDate);
+                }
+            });
+
+            // console.log('filteredData:',filteredData)
+            // 更新折線圖，X 軸為 CONTRACT
+            updateChart1(filteredContracts, filteredData, 'Contract', 'Value');
         }
-    }
-
-    // 顯示對應欄位列表
-    function displayMetalFields(keys, metalLabel) {
-        const fieldContainer = document.getElementById('metalFieldList');
-        const metalData = {{ df9_1 | safe }};
-
-        keys.forEach(key => {
-            if (!key.includes('unit') && !key.includes('date')) {
-                const fieldItem = document.createElement('div');
-                fieldItem.className = 'item-box';
-                fieldItem.textContent = `${metalLabel} - ${key}`;
-                fieldItem.dataset.key = key;
-                fieldItem.dataset.label = metalLabel;
-                fieldItem.dataset.value = JSON.stringify(metalData[metalLabel][key]);
-                fieldItem.dataset.dates = JSON.stringify(metalData[metalLabel][`${key}_date`]);
-
-                fieldItem.addEventListener('click', () => {
-                    const fieldData = JSON.parse(fieldItem.getAttribute('data-value'));
-                    const fieldLabel = `${metalLabel} - ${key}`;
-                    const existingIndex = selectedMetalFields.findIndex(field => field.label === fieldLabel && JSON.stringify(field.data) === JSON.stringify(fieldData));
-
-                    if (existingIndex > -1) {
-                        fieldItem.classList.remove('selected-field');
-                        selectedMetalFields.splice(existingIndex, 1);
-                    } else {
-                        fieldItem.classList.add('selected-field');
-                        selectedMetalFields.push({ label: fieldLabel, data: fieldData, dates: fieldItem.dataset.dates });
-                    }
-
-                    updateMetalVolumeChart(selectedMetalFields);
-                });
-
-                fieldContainer.appendChild(fieldItem);
-            }
-        });
-    }
-
-    // 移除欄位並更新圖表
-    function removeMetalFields(metalLabel) {
-        const fieldContainer = document.getElementById('metalFieldList');
-        const fieldsToRemove = fieldContainer.querySelectorAll(`.item-box[data-label='${metalLabel}']`);
-
-        fieldsToRemove.forEach(item => {
-            const fieldLabel = `${metalLabel} - ${item.dataset.key}`;
-            const existingIndex = selectedMetalFields.findIndex(field => field.label === fieldLabel);
-            if (existingIndex > -1) {
-                selectedMetalFields.splice(existingIndex, 1);
-            }
-            fieldContainer.removeChild(item);
-        });
-
-        updateMetalVolumeChart(selectedMetalFields);
     }
 
     // 更新折線圖
-    function updateMetalVolumeChart(selectedFields) {
-        const uniqueDates = new Set();
-        selectedFields.forEach(field => {
-            let fieldDates;
-            try {
-                fieldDates = JSON.parse(field.dates);
-                fieldDates.forEach(date => uniqueDates.add(date));
-            } catch (error) {
-                console.error("Error parsing dates:", error);
-            }
-        });
+    function updateChart1(xLabels, data, xAxisLabel, yAxisLabel) {
+        const chartContext = document.getElementById('metalDataChart').getContext('2d');
+        // console.log(data)
 
-        const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b));
-        const datasets = selectedFields.map(field => {
-            let fieldDates, fieldData;
-            try {
-                fieldDates = JSON.parse(field.dates);
-                fieldData = field.data;
-            } catch (error) {
-                console.error("Error parsing field data:", error);
-            }
-
-            const alignedData = sortedDates.map(date => {
-                const index = fieldDates ? fieldDates.indexOf(date) : -1;
-                return index !== -1 ? fieldData[index] : null;
-            });
-
-            return {
-                label: field.label,
-                data: alignedData,
-                fill: false,
+        const datasets = [];
+        Object.keys(data).forEach((key) => {
+            datasets.push({
+                label: key,
+                data: data[key].map(value => parseFloat(value) || null),
                 borderColor: getRandomColor(),
+                fill: false,
                 tension: 0.1,
-            };
+            });
         });
 
-        const chartContext = document.getElementById('metalVolumeChart').getContext('2d');
-        if (window.metalVolumeChartInstance) {
-            window.metalVolumeChartInstance.destroy();
+        if (window.metalDataChartInstance) {
+            window.metalDataChartInstance.destroy();
         }
 
-        window.metalVolumeChartInstance = new Chart(chartContext, {
+        // console.log(datasets)
+
+        window.metalDataChartInstance = new Chart(chartContext, {
             type: 'line',
             data: {
-                labels: sortedDates,
+                labels: xLabels,
                 datasets: datasets,
             },
             options: {
@@ -1185,18 +1274,207 @@
                     x: {
                         title: {
                             display: true,
-                            text: 'Time Period',
+                            text: xAxisLabel,
                         },
                     },
                     y: {
                         title: {
                             display: true,
-                            text: 'Metal Price',
+                            text: yAxisLabel,
                         },
                     },
                 },
             },
         });
+    }
+
+
+
+    // 清除列表中的選中狀態
+    function clearSelection(contentId) {
+        const content = document.getElementById(contentId);
+        const items = content.querySelectorAll('.item-box');
+        items.forEach(item => item.classList.remove('selected-item'));
+    }
+
+
+
+    // 隨機顏色生成
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        initMetalCategoryList({{ df9_1 | safe }});
+    });
+
+
+
+
+</script>
+
+<!-- data9_2 -->
+<script>
+    // 儲存已選擇的項目
+    let selectedCategory2 = null;
+    let selectedMetal2 = null;
+    let selectedDate2 = null;
+    let selectedData2 = [];
+
+    // 初始化金屬類型列表
+    function initMetalCategoryList2(data) {
+        const categoryContent = document.getElementById('metalCategoryContent2');
+        categoryContent.innerHTML = '';
+
+        Object.keys(data).forEach(category => {
+            const item = document.createElement('div');
+            item.className = 'item-box';
+            item.textContent = category;
+            item.addEventListener('click', () => selectCategory2(item, category, data[category]));
+            categoryContent.appendChild(item);
+        });
+    }
+
+    // 選擇金屬類型
+    function selectCategory2(item, category, metals) {
+        clearSelection('metalCategoryContent2');
+        item.classList.add('selected-item');
+
+        selectedCategory2 = category;
+        selectedMetal2 = null;
+        selectedDate2 = null;
+
+        const metalNameContent = document.getElementById('metalNameContent2');
+        metalNameContent.innerHTML = '';
+
+        Object.keys(metals).forEach(metal => {
+            const metalItem = document.createElement('div');
+            metalItem.className = 'item-box';
+            metalItem.textContent = metal;
+            metalItem.addEventListener('click', () => selectMetal2(metalItem, metal, metals[metal]));
+            metalNameContent.appendChild(metalItem);
+        });
+    }
+
+    // 選擇金屬名稱
+    function selectMetal2(item, metal, data) {
+        clearSelection('metalNameContent2');
+        item.classList.add('selected-item');
+
+        selectedMetal2 = metal;
+        selectedData2 = data;
+        selectedDate2 = null;
+
+        updateDateList(data);
+    }
+
+    // 更新日期列表
+    function updateDateList(data) {
+        const dateContent = document.getElementById('metalDateContent2');
+        dateContent.innerHTML = '';
+
+        const uniqueDates = Array.from(new Set(data.date || []));
+        uniqueDates.forEach(date => {
+            const dateItem = document.createElement('div');
+            dateItem.className = 'item-box';
+            dateItem.textContent = date;
+            dateItem.addEventListener('click', () => selectDate2(dateItem, date));
+            dateContent.appendChild(dateItem);
+        });
+
+        // 默認顯示第一天的數據
+        if (uniqueDates.length > 0) {
+            selectDate2(dateContent.firstChild, uniqueDates[0]);
+        }
+    }
+
+    // 選擇日期
+    function selectDate2(item, date) {
+        clearSelection('metalDateContent2');
+        item.classList.add('selected-item');
+
+        selectedDate2 = date;
+        updateVolumeAndEOIChart(selectedData2);
+    }
+
+    // 更新折線圖 (交易量與 EOI)
+    function updateVolumeAndEOIChart(data) {
+        console.log(data)
+        const chartContext = document.getElementById('metalVolumeChart').getContext('2d');
+
+        const contracts = data.CONTRACT || [];
+        const volumeData = data.VOLUME || [];
+        const eoiData = data.EOI || [];
+        const dateData = data.date || [];
+
+        // 根據選擇的日期篩選數據
+        const filteredVolumeData = volumeData.filter((_, index) => dateData[index] === selectedDate2);
+        const filteredEOIData = eoiData.filter((_, index) => dateData[index] === selectedDate2);
+        const filteredContracts = contracts.filter((_, index) => dateData[index] === selectedDate2);
+
+        const datasets = [
+            {
+                label: `交易量 (Volume) - ${selectedDate2}`,
+                data: filteredVolumeData.map(value => parseFloat(value) || 0),
+                borderColor: 'blue',
+                fill: false,
+                tension: 0.1,
+            },
+            {
+                label: `EOI (Exchange Open Interest) - ${selectedDate2}`,
+                data: filteredEOIData.map(value => parseFloat(value) || 0),
+                borderColor: 'red',
+                fill: false,
+                tension: 0.1,
+            }
+        ];
+
+        if (window.metalVolumeChartInstance) {
+            window.metalVolumeChartInstance.destroy();
+        }
+
+        window.metalVolumeChartInstance = new Chart(chartContext, {
+            type: 'line',
+            data: {
+                labels: filteredContracts,
+                datasets: datasets,
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Contract',
+                        },
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Value',
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    // 清除列表中的選中狀態
+    function clearSelection(contentId) {
+        const content = document.getElementById(contentId);
+        const items = content.querySelectorAll('.item-box');
+        items.forEach(item => item.classList.remove('selected-item'));
     }
 
     // 隨機顏色生成
@@ -1209,9 +1487,15 @@
         return color;
     }
 
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+        initMetalCategoryList2({{ df9_2 | safe }});
+    });
+
+
 
 </script>
-
+ 
 </body>
 
 </html>

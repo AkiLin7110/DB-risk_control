@@ -356,40 +356,41 @@ def get_data5(GEO:str):
     data = pd.DataFrame(rows)
     return data, updated_items
 
-def get_data6(GEO:str):
+def get_data6():
     '''中國:china、印度: india、馬來西亞:malaysia、土耳其:turkey、美國：usa ##土耳其資料壞了'''
-    driver = webdriver.Chrome()
-    driver.get('https://www.imd.org/entity-profile/india-wcr/#_yearbook_Economic%20Performance')
-    driver.maximize_window()
+    GEOs = ['china', 'india', 'malaysia', 'usa']
+    for GEO in GEOs:
+        driver = webdriver.Chrome()
+        print(GEO)
+        driver.get(f'https://www.imd.org/entity-profile/{GEO}-wcr/#_yearbook_Economic%20Performance')
+        driver.maximize_window()
+        length = "window.scrollBy(0,500)"
+        driver.execute_script(length)
+        time.sleep(2)
 
-    total_ranking = driver.find_elements(By.XPATH,'//*[@id="page-content"]/div/div[3]/div/div[3]/div/div[2]/div/div/div')[0].text.split()
-    total_ranking.insert(0,'')
+        total_ranking = driver.find_elements(By.XPATH,'//*[@id="page-content"]/div/div[3]/div/div[3]/div/div[2]/div/div/div')[0].text.split()
+        total_ranking.insert(0,'')
 
-    rankings = [{'年分': total_ranking[i],'名次': total_ranking[i+1]}for i in range(0,len(total_ranking)) if i%3 == 1 ]
-    length = "window.scrollBy(0,500)"
-    driver.execute_script(length)
-    rankings = []
-    tmp = driver.find_elements(By.XPATH,'//*[@id="page-content"]/div/div[3]/div/ul/li[2]')[0].text.split('\n')
-    for i in range(0,len(tmp)-1):
-        if i == 1:
-            score = tmp[i].split('|  ')[1].split(': ')
-        if tmp[i+1] == 'th' or tmp[i+1] == 'rd':
-            rankings.append(tmp[i])
-    time.sleep(2)
+        rankings = [{'年分': total_ranking[i],'名次': total_ranking[i+1]}for i in range(0,len(total_ranking)) if i%3 == 1 ]
 
-    records = []
-    for j in range(1,5):
-        tmp = driver.find_elements(By.XPATH,f'//*[@id="page-content"]/div/div[3]/div/ul/li[{j}]')[0].text.split('\n')
+        records = []
+        for j in range(1,5):
+            tmp = driver.find_elements(By.XPATH,f'//*[@id="page-content"]/div/div[3]/div/ul/li[{j}]')[0].text.split('\n')
 
-        terms    = tmp[0]
-        position = tmp[1].split(' | ')[0].split(': ')[1][:-3]
-        score    = tmp[1].split(' | ')[1].split(': ')[1]
-        history  = [tmp[i] for i in range(2,len(tmp)-3) if i%2 == 1] 
+            terms    = tmp[0]
+            position = tmp[1].split(' | ')[0].split(': ')[1][:-3]
+            score    = tmp[1].split(' | ')[1].split(': ')[1]
+            history  = [tmp[i] for i in range(2,len(tmp)-3) if i%2 == 1] 
 
-        records.append({'terms':terms, 'position':position, 'score':score, 'history':history}) 
-    
-    DF = pd.DataFrame(records)
-    return DF
+            records.append({'terms':terms, f"score_{rankings[-1]['年分']}":score,
+                            f"{rankings[-5]['年分']}":history[-4], f"{rankings[-4]['年分']}":history[-3], f"{rankings[-3]['年分']}":history[-2], f"{rankings[-2]['年分']}":history[-1], f"{rankings[-1]['年分']}":position}) 
+
+        DF = pd.DataFrame(records)
+        DF.index = DF['terms']
+        del DF['terms']
+        DF = DF.T
+        DF.to_excel(f'auto/new_data/6_IMD競爭力指標_{GEO}.xlsx')
+    return 1
 
 def get_data7_1():
     res = requests.get('https://www.sse.net.cn/index/singleIndex?indexType=gcspi')
@@ -713,6 +714,7 @@ def get_data9_1():
         'Ferrous':{}
     }
 
+    # for k in range(0,1):
     for k in range(0,len(links)):
 
         driver.get(f'{links[k]}')
@@ -752,7 +754,7 @@ def get_data9_1():
                     if loc != 4:
                         columns = data_list[i].split(' ')
                     else:
-                        columns = ['Contract', 'Price']
+                        columns = ['CONTRACT', 'PRICE']
                         if k!=0 and k!=2:
                             values = data_list[i].rsplit(' ', 1)
 
@@ -764,7 +766,7 @@ def get_data9_1():
                             for j in range(0,len(columns)):
                                 data[name][columns[j]].append(values[j]) 
                 else:
-                    if loc == 2 or loc == 3 or k>=8 :
+                    if loc == 2 or loc == 3 or loc == 4 or k>=8 :
                         values = data_list[i].rsplit(' ', 1)
                     else:
                         values = data_list[i].split(' ')
@@ -780,51 +782,75 @@ def get_data9_1():
     
     return 1
 
-def get_data9_2(query):
-    '''
-    LME-Steel-CFR-India-Platts
-    LME-Steel-CFR-Taiwan-Argus
-    LME-Steel-HRC-FOB-China-Argus
-    LME-Steel-Scrap-CFR-Turkey-Platts
-    LME-Steel-Rebar-FOB-Turkey-Platts
-    '''
+def get_data9_2():
     driver = webdriver.Chrome()
-    driver.get(f'https://www.lme.com/Metals/Ferrous/{query}#Volume+and+open+interest')
     driver.maximize_window()
-    time.sleep(1)
-    output = driver.find_elements(By.XPATH, '//*[@id="dataset-tab-2"]/div/div[2]/div[2]/div/div/div[1]/table/tbody')[0].text.split()
-    results_activity = []
-    for i in range(0,len(output),4):
-        price_time = f'{output[i+0]} {output[i+1]}'
-        volume = output[i+2]
-        uncover = output[i+3]
-        results_activity.append({'時間':price_time, '交易量':volume, '未平倉量': uncover})
-    results_activity = pd.DataFrame(results_activity)
-    results_activity.index = results_activity['時間']
-    if 'N/A' not in results_activity['交易量'].values:
-        results_activity['交易量'] = results_activity['交易量'].astype(float)
-    if 'N/A' not in results_activity['未平倉量'].values:
-        results_activity['未平倉量'] = results_activity['未平倉量'].astype(float)
-        
-    del results_activity['時間']
-    results_activity['公布時間'] = driver.find_elements(By.XPATH, '//*[@id="dataset-tab-2"]/div/div[2]/div[1]/div/input')[0].get_attribute("max").replace('-','/')
-    return results_activity
+    url = 'https://www.lme.com/Metals/Ferrous'
+    driver.get(f'{url}')
+
+    scroll_down(driver)
+
+    start = 60
+    end = 90
+    output = driver.find_elements(By.XPATH, '//*[@href]')
+    links = []
+    for i in range(start, end+1):
+        link = output[i].get_attribute('href')
+        links.append(link)
+    links = [link for link in links if 'ferrous/' in link or 'Ferrous/' in link]
+    del links[8]
+    urls = ["/".join(link.split("/")[-2:]) for link in links]
+
+    for k in range(0,len(urls)):
+        query = urls[k]
+        if k < 8:
+            link = f'https://www.lme.com/Metals/{query}#Volume+%26+OI'
+        else:
+            link = f'https://www.lme.com/Metals/{query}#Volume+and+open+interest'
+        driver.get(link)
+        driver.maximize_window()
+        if k == 3:
+            scroll_down(driver)
+        time.sleep(1)
+        output = driver.find_elements(By.XPATH, '//*[@id="dataset-tab-2"]/div/div[2]/div[2]/div/div/div[1]/table/tbody')[0].text.split('\n')
+
+        df = {}
+        df['CONTRACT'] = []
+        df['VOLUME'] = []
+        df['EOI'] = []
+        for line in output:
+            terms = line.rsplit(' ', 2)
+            df['CONTRACT'].append(terms[0])
+            df['VOLUME'].append(terms[1])
+            df['EOI'].append(terms[2])    
+
+        df = pd.DataFrame(df)
+        df['date'] = driver.find_elements(By.XPATH, '//*[@id="dataset-tab-2"]/div/div[2]/div[1]/div/input')[0].get_attribute("max").replace('-','/')
+        df.to_excel(f"auto/new_data/9_2_{query.replace('/','_')}.xlsx")
+    return 1
     
-def get_data_10(airport):
+def get_data_10():
+    airpots = ['PVG', 'KUL', 'DEL', 'IST', 'DXB', 'DEN']
     options = Options()
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
-    searching_airport = airport
-
     driver = webdriver.Chrome(options=options)
     driver.get('https://globe.adsbexchange.com/')
     driver.maximize_window()
-
-    driver.find_elements(By.XPATH, '//*[@id="jump_input"]')[0].send_keys(searching_airport)
-    driver.find_elements(By.XPATH,'//*[@id="jump_form"]/button[1]')[0].click()
-    num = driver.find_element(By.XPATH, '//*[@id="dump1090_total_ac_positions"]').text
-    df = pd.DataFrame()
-    df['航班數量'] = [num]
-    df.index = [pd.to_datetime(datetime.now())]*len(df)
+    df = {}
+    df['機場'] = []
+    df['航班數量'] = []
+    for airport in airpots:
+        searching_airport = airport
+        driver.find_elements(By.XPATH, '//*[@id="jump_input"]')[0].send_keys(searching_airport)
+        driver.find_elements(By.XPATH,'//*[@id="jump_form"]/button[1]')[0].click()
+        time.sleep(2)
+        num = driver.find_element(By.XPATH, '//*[@id="dump1090_total_ac_positions"]').text
+        df['機場'].append(searching_airport)
+        df['航班數量'].append(num)
+    df = pd.DataFrame(df)
+    df['時間'] = [pd.to_datetime(datetime.now())]*len(df)
+    df.index = df['時間']
+    del df['時間']
     return df
 
 def get_data_12():

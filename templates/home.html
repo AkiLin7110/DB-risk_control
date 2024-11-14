@@ -1,8 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-        <meta charset="UTF-8">
-        <title>Home</title>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <style>
+        /* 按鈕樣式 */
+        button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            color: #000;
+        }
+
+        /* 選取狀態樣式 */
+        button.selected {
+            background-color: #66B3FF;
+            color: #fff;
+        }
+
+        /* 按鈕容器樣式 */
+        .button-container {
+            display: flex;
+            /* justify-content: center; */
+            gap: 10px;
+        }
+    </style>
 </head>
 <body>
         <h1>PESTEL 外部環境分析總結</h1>
@@ -92,23 +117,29 @@
               </tr>
             </tbody></table>
 
-        <form method='post' action={{ url_for('product_analysis') }}>
-            <p>
-            <button type='submit'>產品分析</button>
-        </p>
-        </form>
+            <!-- 按鈕容器 -->
+            <div class="button-container">
+                <form method="post" action="{{ url_for('product_analysis') }}">
+                    <button type="submit">產品分析</button>
+                </form>
+        
+                <form method="post" action="{{ url_for('economic_analysis') }}">
+                    <button type="submit">經濟分析</button>
+                </form>
+        
+                <form method="post" action="{{ url_for('government') }}">
+                    <button type="submit">政府補助</button>
+                </form>
+            </div>
+      <h1>匯率預測報告</h1>
+      <h2> CNY/TWD </h2>
+      <h2> TWD/YEN </h2>
+      <h2> USD/TWD </h2>
+      <h3>貨幣相關係數</h3>
+      
+      <h3>貨幣熱力圖</h3>
 
-        <form method='post' action={{ url_for('economic_analysis') }}>
-            <p>
-            <button type='submit'>經濟分析</button>
-        </p>
-        </form>
 
-        <form method='post' action={{ url_for('government') }}>
-            <p>
-            <button type='submit'>政府補助</button>
-        </p>
-        </form>
 
 
 
