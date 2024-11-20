@@ -131,13 +131,34 @@
                     <button type="submit">政府補助</button>
                 </form>
             </div>
+            
+
       <h1>匯率預測報告</h1>
+      <div class="button-container">
+        <form method="post" action="{{ url_for('update_data0_1') }}">
+          <label for="month">請選擇年份和月份：</label>
+          <input type="month" id="month" name="month" required>
+          <button type="submit">更新輿情貨幣對資訊</button>
+      </form>
+        <form method="post" action="{{ url_for('update_data0_1') }}">
+          <label for="date">請輸入日期 (YYYY-MM-DD)：</label>
+          <input type="date" id="date" name="date" required>
+          <button type="submit">更新輿情貨幣對資訊</button>
+      </form>
+        
+      </div>
       <h2> CNY/TWD </h2>
       <h2> TWD/YEN </h2>
       <h2> USD/TWD </h2>
       <h3>貨幣相關係數</h3>
-      
-      <h3>貨幣熱力圖</h3>
+      <div>
+        {{ fig1_html|safe }}
+      </div>
+    
+      <h3>貨幣討論度熱力圖</h3>
+      <div>
+        {{ fig2_html|safe }}
+      </div>
 
 
 

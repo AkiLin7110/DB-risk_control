@@ -282,7 +282,7 @@ def get_data4():
             plans2.append({"公司名稱": company_name, "計畫名稱": plans_name, "核定日期": date})
     return pd.DataFrame(plans2)
 
-def get_data5(GEO:str):
+def get_data5(GEO:str, formatted_time):
     '''中國:china、印度: india、馬來西亞:malaysia、土耳其:turkey、美國：united-states'''
     options = Options() 
     # options.add_argument('--headless=new')  # 啟動Headless 無頭
@@ -296,7 +296,7 @@ def get_data5(GEO:str):
     for l in range(0, len(macro)):
         driver.find_element(By.XPATH, f'//*[@id="pagemenutabs"]/li[{l+1}]/a').click()
         data = driver.find_elements(By.XPATH, f'//*[@id="{macro[l].lower()}"]/div/div/table/tbody')[0].text.replace('30 Year Mortgage Rate', 'thirty Year Mortgage Rate').replace('15 Year Mortgage Rate', 'fifteen Year Mortgage Rate').replace('Michigan 5 Year Inflation Expectations', 'Michigan five Year Inflation Expectations').replace('4-week','four-week').replace('1 Year MLF Rate', 'one Year MLF Rate').replace('14-Day Reverse Repo Rate', 'fourteen-Day Reverse Repo Rate').replace('Loan Prime Rate 5Y', 'Loan Prime Rate five-Y').split('\n')
-   
+
         for i in range(0,len(data)):
             tmp = data[i].split(' ')
             name = ''
@@ -351,8 +351,10 @@ def get_data5(GEO:str):
             except:
                 lowest = ''
             
-                
-            rows.append({'總經種類':macro[l],'指標名稱':name, 'Last':tmp[k], 'Previous': previous, 'Higest': highest, 'Lowest': lowest, '單位': unit, '公告日期': notice_date})
+            if 'Stock' in name or 'Currency' in name:
+                rows.append({'總經種類':macro[l],'指標名稱':name, 'Last':tmp[k], 'Previous': previous, 'Higest': highest, 'Lowest': lowest, '單位': unit, '公告日期': formatted_time})
+            else:    
+                rows.append({'總經種類':macro[l],'指標名稱':name, 'Last':tmp[k], 'Previous': previous, 'Higest': highest, 'Lowest': lowest, '單位': unit, '公告日期': notice_date})
     data = pd.DataFrame(rows)
     return data, updated_items
 

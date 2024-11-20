@@ -99,7 +99,14 @@
         </div>
     </div>
     
-
+    <style type="text/css">
+        .tg  {border-collapse:collapse;border-spacing:0;}
+        .tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+          overflow:hidden;padding:10px 5px;word-break:normal;}
+        .tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
+          font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+        .tg .tg-0lax{text-align:left;vertical-align:top}
+    </style>
 
     
 
@@ -136,13 +143,18 @@
             </div>
         </div>
     <h2>各國Swift占比</h2>
+
         <form method='post' action={{ url_for('update_data12') }}>
             <p>
             <button type='submit'>更新資料</button>
             </p>
         </form>
+        <h3>
+            人民幣({{df12['人民幣']['時間'][-1]}}): {{df12['人民幣']['SWIFT占比'][-1]}}
+        </h3>
 
-        <div style="width:70%">
+
+        <div style="width:50%">
             <canvas id="myChart3"></canvas>
         </div>
     
@@ -267,6 +279,31 @@
         });
     });
 
+    // 顏色字典：為每個國家和指標組合分配顏色
+    const colorMap = {
+        "china-Economic Performance": "#FF5733",
+        "china-Government Efficiency": "#33FF57",
+        "china-Business Efficiency": "#3357FF",
+        "china-Infrastructure": "#FF33A8",
+        "india-Economic Performance": "#FFC300",
+        "india-Government Efficiency": "#C70039",
+        "india-Business Efficiency": "#900C3F",
+        "india-Infrastructure": "#581845",
+        "malaysia-Economic Performance": "#28B463",
+        "malaysia-Government Efficiency": "#DAF7A6",
+        "malaysia-Business Efficiency": "#1F618D",
+        "malaysia-Infrastructure": "#7D3C98",
+        "usa-Economic Performance": "#FF5733",
+        "usa-Government Efficiency": "#33FFBD",
+        "usa-Business Efficiency": "#FF33FF",
+        "usa-Infrastructure": "#33B5FF"
+    };
+
+    // 根據國家和指標獲取顏色
+    function getColor(country, indicator) {
+        return colorMap[`${country}-${indicator}`] || '#000000'; // 默認顏色為黑色
+    }
+
     // 更新圖表
     function updateCharts() {
         const rankingDatasets = [];
@@ -282,7 +319,7 @@
                     label: `${country} - ${indicator}`,
                     data: rankingData,
                     fill: false,
-                    borderColor: getRandomColor(),
+                    borderColor: getColor(country, indicator),
                     tension: 0.1
                 });
 
@@ -290,10 +327,12 @@
                     label: `${country} - ${indicator} Score (${scoreTime[0]})`,
                     data: Array(years.length - 1).fill(null).concat(scoreData),
                     fill: false,
-                    borderColor: getRandomColor(),
+                    borderColor: getColor(country, indicator), // 使用颜色映射
+                    backgroundColor: getColor(country, indicator), // 设置背景颜色为相同颜色
                     tension: 0.1,
                     borderDash: [5, 5]
                 });
+
             });
         });
 
@@ -317,7 +356,7 @@
         // 更新 Score 圖表
         if (scoreChart) scoreChart.destroy();
         scoreChart = new Chart(scoreCtx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: years,
                 datasets: scoreDatasets

@@ -1,3 +1,4 @@
+
 <html>
 
 <head>
@@ -196,6 +197,11 @@
     </div> 
 
     <h2>政府推動計畫名單</h2>
+    <form method='post' action={{ url_for('update_data4') }}>
+        <p>
+        <button type='submit'>更新資料</button>
+    </p>
+    </form>
     <input type="text" id="searchInput" placeholder="Search for keywords">
     <div>
         {% for table in tables %}
@@ -541,46 +547,49 @@
 
         // 更新折線圖
         function updateProductVolumeChart(selectedFields) {
-            const uniqueDates = new Set();
-            selectedFields.forEach(field => {
-                let fieldDates;
-                try {
-                    fieldDates = JSON.parse(field.dates);
-                    fieldDates.forEach(date => uniqueDates.add(date));
-                } catch (error) {
-                    console.error("Error parsing dates:", error);
-                }
-            });
+        const uniqueDates = new Set();
+        selectedFields.forEach(field => {
+            let fieldDates;
+            try {
+                fieldDates = JSON.parse(field.dates);
+                fieldDates.forEach(date => uniqueDates.add(date));
+            } catch (error) {
+                console.error("Error parsing dates:", error);
+            }
+        });
 
-            const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b));
-            const datasets = selectedFields.map(field => {
-                let fieldDates, fieldData;
-                try {
-                    fieldDates = JSON.parse(field.dates);
-                    fieldData = field.data;
-                } catch (error) {
-                    console.error("Error parsing field data:", error);
-                }
-
-                const alignedData = sortedDates.map(date => {
-                    const index = fieldDates ? fieldDates.indexOf(date) : -1;
-                    return index !== -1 ? fieldData[index] : null;
-                });
-
-                return {
-                    label: field.label,
-                    data: alignedData,
-                    fill: false,
-                    borderColor: getRandomColor(),
-                    tension: 0.1,
-                };
-            });
-
-            const chartContext = document.getElementById('productVolumeChart').getContext('2d');
-            if (window.productVolumeChartInstance) {
-                window.productVolumeChartInstance.destroy();
+        const sortedDates = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b));
+        const datasets = selectedFields.map(field => {
+            let fieldDates, fieldData;
+            try {
+                fieldDates = JSON.parse(field.dates);
+                fieldData = field.data;
+            } catch (error) {
+                console.error("Error parsing field data:", error);
             }
 
+            const alignedData = sortedDates.map(date => {
+                const index = fieldDates ? fieldDates.indexOf(date) : -1;
+                return index !== -1 ? fieldData[index] : null;
+            });
+
+            return {
+                label: field.label,
+                data: alignedData,
+                fill: false,
+                borderColor: getRandomColor(),
+                tension: 0.1,
+            };
+        });
+
+        // 如果圖表已經存在，則只更新資料，不銷毀圖表
+        if (window.productVolumeChartInstance) {
+            window.productVolumeChartInstance.data.labels = sortedDates;
+            window.productVolumeChartInstance.data.datasets = datasets;
+            window.productVolumeChartInstance.update(); // 只更新圖表
+        } else {
+            // 初始化圖表
+            const chartContext = document.getElementById('productVolumeChart').getContext('2d');
             window.productVolumeChartInstance = new Chart(chartContext, {
                 type: 'line',
                 data: {
@@ -611,6 +620,8 @@
                 },
             });
         }
+    }
+
 
         // 隨機顏色生成
         function getRandomColor() {
@@ -632,22 +643,12 @@
 
     <!-- data3 -->
     <script>
-        const indexs_3 = {{indexs_3 | safe}}
-        const label_3 = {{label_3 | safe}}
-        const data = {{data | safe}}
-
+        const indexs_3 = {{ indexs_3 | safe }};
+        const label_3 = {{ label_3 | safe }};
+        const data = {{ data | safe }};
         const ctx = document.getElementById('chartContainer').getContext('2d');
-        
-        // Prepare datasets for each country
-        const datasets = label_3.map(country => ({
-            label: country,
-            data: data[country],
-            fill: false,
-            borderColor: getRandomColor(),
-            tension: 0.1
-        }));
 
-        // Function to generate random colors for each line
+        // 隨機顏色生成函數
         function getRandomColor() {
             const letters = '0123456789ABCDEF';
             let color = '#';
@@ -657,36 +658,78 @@
             return color;
         }
 
-        // Create the chart
+        // 計算移動平均
+        function calculateMovingAverage(dataArray, period = 5) {
+            const movingAverage = [];
+            for (let i = 0; i < dataArray.length; i++) {
+                if (i < period - 1) {
+                    movingAverage.push(null); // 前幾個數據點無法計算移動平均
+                } else {
+                    const sum = dataArray.slice(i - period + 1, i + 1).reduce((acc, val) => acc + val, 0);
+                    movingAverage.push(sum / period);
+                }
+            }
+            return movingAverage;
+        }
+
+        // 準備每個國家的 dataset，包括原始數據和移動平均
+        const datasets = label_3.map((country) => {
+            const originalData = data[country];
+            const movingAverageData = calculateMovingAverage(originalData, 5); // 使用 5 天移動平均
+            const color = getRandomColor(); // 為該國家生成隨機顏色
+
+            return [
+                {
+                    label: `${country} (原始數據)`,
+                    data: originalData,
+                    fill: false,
+                    borderColor: color,
+                    tension: 0.1,
+                    hidden: true
+                },
+                {
+                    label: `${country} (5 天移動平均)`,
+                    data: movingAverageData,
+                    fill: false,
+                    borderColor: color,
+                    borderDash: [2, 2],
+                    tension: 0.1,
+                    hidden: true
+                },
+            ];
+        }).flat(); // 使用 flat 展開多維數組
+
+        // 繪製圖表
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: indexs_3, // X-axis (e.g., time periods)
-                datasets: datasets
+                labels: indexs_3,
+                datasets: datasets,
             },
             options: {
                 responsive: true,
                 plugins: {
                     legend: {
                         position: 'top',
-                    }
+                    },
                 },
                 scales: {
                     x: {
                         title: {
                             display: true,
-                            text: 'Time Period'
-                        }
+                            text: 'Time Period',
+                        },
                     },
                     y: {
                         title: {
                             display: true,
-                            text: 'Value'
-                        }
-                    }
-                }
-            }
+                            text: 'Value',
+                        },
+                    },
+                },
+            },
         });
+
     </script>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -1220,7 +1263,9 @@
             updateChart1(stocks, filteredData, 'STOCKS', 'AMOUNT');
         } else {
             // 處理其他數據類型
-            const filteredContracts = selectedData.CONTRACT || [];
+           // 去重處理
+            const filteredContracts = Array.from(selectedData.CONTRACT.filter((_, index) => selectedData.date[index] === selectedDate));
+            // console.log(filteredContracts)
 
             ["BID", "OFFER", "PRICE","Price"].forEach((key) => {
  
@@ -1231,6 +1276,7 @@
 
             // console.log('filteredData:',filteredData)
             // 更新折線圖，X 軸為 CONTRACT
+            console.log(filteredContracts)
             updateChart1(filteredContracts, filteredData, 'Contract', 'Value');
         }
     }
@@ -1238,13 +1284,20 @@
     // 更新折線圖
     function updateChart1(xLabels, data, xAxisLabel, yAxisLabel) {
         const chartContext = document.getElementById('metalDataChart').getContext('2d');
-        // console.log(data)
+
+        // 使用 Set 去重，並轉為 Array
+        const uniqueXLabels = Array.from(new Set(xLabels));
 
         const datasets = [];
         Object.keys(data).forEach((key) => {
+            const alignedData = uniqueXLabels.map((label) => {
+                const index = xLabels.indexOf(label);
+                return index !== -1 ? parseFloat(data[key][index]) || null : null;
+            });
+
             datasets.push({
                 label: key,
-                data: data[key].map(value => parseFloat(value) || null),
+                data: alignedData,
                 borderColor: getRandomColor(),
                 fill: false,
                 tension: 0.1,
@@ -1255,12 +1308,10 @@
             window.metalDataChartInstance.destroy();
         }
 
-        // console.log(datasets)
-
         window.metalDataChartInstance = new Chart(chartContext, {
             type: 'line',
             data: {
-                labels: xLabels,
+                labels: uniqueXLabels,
                 datasets: datasets,
             },
             options: {
@@ -1287,6 +1338,7 @@
             },
         });
     }
+
 
 
 
@@ -1404,71 +1456,85 @@
     }
 
     // 更新折線圖 (交易量與 EOI)
-    function updateVolumeAndEOIChart(data) {
-        console.log(data)
-        const chartContext = document.getElementById('metalVolumeChart').getContext('2d');
+   function updateVolumeAndEOIChart(data) {
+    const chartContext = document.getElementById('metalVolumeChart').getContext('2d');
 
-        const contracts = data.CONTRACT || [];
-        const volumeData = data.VOLUME || [];
-        const eoiData = data.EOI || [];
-        const dateData = data.date || [];
+    const contracts = data.CONTRACT || [];
+    const volumeData = data.VOLUME || [];
+    const eoiData = data.EOI || [];
+    const dateData = data.date || [];
 
-        // 根據選擇的日期篩選數據
-        const filteredVolumeData = volumeData.filter((_, index) => dateData[index] === selectedDate2);
-        const filteredEOIData = eoiData.filter((_, index) => dateData[index] === selectedDate2);
-        const filteredContracts = contracts.filter((_, index) => dateData[index] === selectedDate2);
+    // 根據選擇的日期篩選數據
+    const filteredContracts = contracts.filter((_, index) => dateData[index] === selectedDate2);
+    const filteredVolumeData = volumeData.filter((_, index) => dateData[index] === selectedDate2);
+    const filteredEOIData = eoiData.filter((_, index) => dateData[index] === selectedDate2);
 
-        const datasets = [
-            {
-                label: `交易量 (Volume) - ${selectedDate2}`,
-                data: filteredVolumeData.map(value => parseFloat(value) || 0),
-                borderColor: 'blue',
-                fill: false,
-                tension: 0.1,
-            },
-            {
-                label: `EOI (Exchange Open Interest) - ${selectedDate2}`,
-                data: filteredEOIData.map(value => parseFloat(value) || 0),
-                borderColor: 'red',
-                fill: false,
-                tension: 0.1,
-            }
-        ];
+    // 使用 Set 去重，並轉為 Array
+    const uniqueContracts = Array.from(new Set(filteredContracts));
 
-        if (window.metalVolumeChartInstance) {
-            window.metalVolumeChartInstance.destroy();
+    // 對齊數據：根據 uniqueContracts 對齊 Volume 和 EOI
+    const alignedVolumeData = uniqueContracts.map(contract => {
+        const index = filteredContracts.indexOf(contract);
+        return index !== -1 ? filteredVolumeData[index] : null;
+    });
+
+    const alignedEOIData = uniqueContracts.map(contract => {
+        const index = filteredContracts.indexOf(contract);
+        return index !== -1 ? filteredEOIData[index] : null;
+    });
+
+    const datasets = [
+        {
+            label: `交易量 (Volume) - ${selectedDate2}`,
+            data: alignedVolumeData.map(value => parseFloat(value) || 0),
+            borderColor: 'blue',
+            fill: false,
+            tension: 0.1,
+        },
+        {
+            label: `EOI (Exchange Open Interest) - ${selectedDate2}`,
+            data: alignedEOIData.map(value => parseFloat(value) || 0),
+            borderColor: 'red',
+            fill: false,
+            tension: 0.1,
         }
+    ];
 
-        window.metalVolumeChartInstance = new Chart(chartContext, {
-            type: 'line',
-            data: {
-                labels: filteredContracts,
-                datasets: datasets,
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                },
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Contract',
-                        },
-                    },
-                    y: {
-                        title: {
-                            display: true,
-                            text: 'Value',
-                        },
-                    },
-                },
-            },
-        });
+    if (window.metalVolumeChartInstance) {
+        window.metalVolumeChartInstance.destroy();
     }
+
+    window.metalVolumeChartInstance = new Chart(chartContext, {
+        type: 'line',
+        data: {
+            labels: uniqueContracts,
+            datasets: datasets,
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Contract',
+                    },
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Value',
+                    },
+                },
+            },
+        },
+    });
+}
+
 
     // 清除列表中的選中狀態
     function clearSelection(contentId) {

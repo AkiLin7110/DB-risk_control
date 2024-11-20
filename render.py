@@ -4,8 +4,21 @@ import json
 import pandas as pd
 from operator import itemgetter
 import os
+from Forex_dashboard.cnyesnews_crawler import savefile, parse, crawler, main
+from Forex_dashboard.cnyesnews_calculator import cnyesnews_category, cnyesnews_calculator
+from Forex_dashboard.cnyesnews_drawer import FX_corr_overtime
+import arrow
+from dash import Dash, dcc, html
+import plotly.express as px
 
 app = Flask(__name__)
+file_source  = "auto/new_data"
+file_destination = "auto/data"
+file_previous = "auto/previous_data"
+
+def move_file(file_destination, file_previous, file_name):
+    os.replace("{file_destination}/{file_name}", "{file_previous}/{file_name}" )
+    return "{file_destination}/{file_name} -> {file_previous}/{file_name} successfully!"
 
 
 @app.route('/')
@@ -21,7 +34,11 @@ def text():
 
 @app.route('/home')
 def home():
-    return render_template('home.html')
+    fig1, fig2 = FX_corr_overtime()
+    fig1_html = fig1.to_html(full_html=False)
+    fig2_html = fig2.to_html(full_html=False)
+    return render_template('home.html', fig1_html=fig1_html, fig2_html=fig2_html)
+
 
 # @app.route('/loginurl', methods=['GET', 'POST'])
 # def login():
@@ -125,6 +142,25 @@ def operation_condition():
 def government():
     return render_template('government.html')
 
+@app.route('/update/get_data0_1', methods=['GET', 'POST'])
+def update_data0_1():
+    # update_date = (request.form.get('month'))
+    # parsed_date = arrow.get(update_date, "YYYY-MM")
+
+    # # 提取年份、月份和日期
+    # beginyear = parsed_date.year
+    # beginmonth = parsed_date.month
+    # stopmonth = parsed_date.month
+
+    # if update_date:
+    #     for i in range(1,3):
+    #         main(beginyear,beginmonth,i,stopmonth)
+
+    cnyesnews_category()
+    cnyesnews_calculator()
+    message = '更新完成: 貨幣對資訊'
+    return render_template('update_home.html', message = message)  
+
 @app.route('/update/get_data1', methods=['GET', 'POST'])
 def update_data1():
     filepath = 'auto/new_data/'
@@ -218,6 +254,37 @@ def update_data3():
     message = '更新完成: 工業生產增加率'
     return render_template('update_product.html', message = message)
 
+@app.route('/update/get_data4', methods=['GET', 'POST'])
+def update_data4():
+    df = get_data4()
+    df.to_excel('auto/new_data/4_政府推動計畫名單.xlsx', index = 0)
+
+    # 讀取新的資料
+    df = pd.read_excel('auto/new_data/4_政府推動計畫名單.xlsx')
+
+    # 更新檔案路徑
+    updatepath = 'auto/data/'
+    path_update = f'{updatepath}4_政府推動計畫名單.xlsx'
+
+    # 嘗試讀取舊資料，若檔案不存在，則建立空的 DataFrame
+    try:
+        DF = pd.read_excel(path_update)
+    except FileNotFoundError:
+        DF = pd.DataFrame(columns=['公司名稱', '計畫名稱', '核定日期'])
+
+    # 合併新資料與舊資料，並去除重複資料
+    DF = pd.concat([DF, df], ignore_index=True).drop_duplicates(subset=['公司名稱', '計畫名稱', '核定日期'])
+
+    # 依照 '核定日期' 排序
+    DF = DF.sort_values(by='核定日期', ignore_index=True)
+
+    # 儲存更新後的資料
+    DF.to_excel(path_update, index=False)
+
+    message = f'更新完成: 政府推動計畫名單'
+
+    return render_template('update_product.html', message=message)
+
 @app.route('/update/get_data5', methods=['GET', 'POST'])
 def update_data5():
     updated = request.form.get('updated_item')  # Retrieve updated_item from the form
@@ -226,12 +293,17 @@ def update_data5():
     GEOs = ['china', 'india', 'malaysia', 'turkey', 'united-states']
     filepath = 'auto/new_data/'
 
+    # 取得當前時間
+    now = arrow.now()
+
+    formatted_time = now.format("DD/MMM/YY HH:mm:ss")
+
     for GEO in GEOs:
 
         if updated == 'all':
-            df, updated_items = get_data5(GEO)
+            df, updated_items = get_data5(GEO, formatted_time)
         else:
-            df, _ = get_data5(GEO)
+            df, _ = get_data5(GEO, formatted_time)
             updated_items = [updated]
 
         df.to_excel(f'{filepath}5_經濟數據_{GEO}.xlsx', index = 0)
@@ -544,7 +616,7 @@ def update_data9():
                 for column in columns:
                     if column not in data.keys():
                         data[column] = []
-            if df.iloc[i]['date'] in data['date'] and df.iloc[i]['CONTRACT'] in data['CONTRACT']:
+            if df.iloc[i]['date'] in data['date'] and df.iloc[i]['CONTRACT'] == data['CONTRACT'][-1]:
                 continue
             for column in columns:
                 data[column].append(str(df.iloc[i][column]))
