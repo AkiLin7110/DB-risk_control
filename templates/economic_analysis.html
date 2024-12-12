@@ -49,13 +49,113 @@
             background-color: #66B3FF; /* 綠色背景表示已選取 */
             color: #fff; /* 白色文字 */
         }
+        
+        #table-of-contents {
+            background-color: #f9f9f9; /* 目錄背景顏色，淺灰色 */
+            padding: 20px; /* 內距 */
+            border: 1px solid #ddd; /* 邊框 */
+            border-radius: 5px; /* 邊框圓角 */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 添加陰影效果 */
+        }
 
+        #table-of-contents h2 {
+            color: #333; /* 標題文字顏色 */
+            font-weight: bold; /* 標題加粗 */
+        }
+
+        #table-of-contents ul {
+            padding-left: 20px; /* 列表內距 */
+            list-style-type: disc; /* 使用實心圓點樣式 */
+        }
+
+        #table-of-contents li {
+            margin-bottom: 10px; /* 列表項目間距 */
+        }
+
+        #table-of-contents a {
+            text-decoration: none; /* 移除超連結的底線 */
+            color: #007BFF; /* 超連結文字顏色 */
+        }
+
+        #table-of-contents a:hover {
+            text-decoration: underline; /* 滑鼠懸停時添加底線 */
+            color: #0056b3; /* 改變超連結顏色 */
+        }
     </style>
 </head>
 <body>
-    <h1>經濟分析</h1>    
+    <h1>經濟分析</h1>
+    <div id="table-of-contents">
+        <h2>目錄</h2>
+        <ul>
+            <li><a href="#imd-competitiveness">IMD 競爭力指標</a></li>
+            <li><a href="#economic-overview">各國經濟總覽</a></li>
+            <li><a href="#swift-share">各國Swift占比</a></li>
+            <li><a href="#financial-market">各國金融市場數據</a></li>
+            <li><a href="#airport-traffic">各機場航空吞吐量</a></li>
+            <li><a href="#car-sales">中國汽車銷量</a></li>
+        </ul>
+    </div>    
     
-    <h2>IMD競爭力指標</h2>
+        <h2 id = "imd-competitiveness">IMD競爭力指標</h2>
+        <h3>IMD 競爭力指標對工具機市場的影響</h3>
+        <p>IMD 的競爭力指標涵蓋四大領域：經濟表現、政府效能、企業效能和基礎建設。這些領域的表現對工具機市場的發展有深遠的影響。</p>
+        
+        <h3>1. 經濟表現</h3>
+        <ul>
+            <li><strong>關聯性：</strong>經濟增長和穩定性是工具機需求的重要驅動因素。製造業的資本支出往往與整體經濟表現密切相關。</li>
+            <li><strong>影響：</strong>
+                <ul>
+                    <li>高經濟增長率的地區通常伴隨著製造業投資的增加，從而推動對工具機的需求。</li>
+                    <li>經濟不穩定可能導致企業延遲購買或減少投資。</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>2. 政府效能</h3>
+        <ul>
+            <li><strong>關聯性：</strong>政府政策和執行能力直接影響工具機產業的運營環境。</li>
+            <li><strong>影響：</strong>
+                <ul>
+                    <li>稅收優惠、製造業投資激勵和出口支持政策能促進工具機行業的增長。</li>
+                    <li>政府在貿易和市場開放方面的策略會影響工具機的進出口情況。</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>3. 企業效能</h3>
+        <ul>
+            <li><strong>關聯性：</strong>企業的生產效率、創新能力和市場靈活性決定了工具機製造商的競爭力。</li>
+            <li><strong>影響：</strong>
+                <ul>
+                    <li>高效的管理和創新文化幫助工具機製造商快速響應市場需求和技術變化。</li>
+                    <li>當地企業的競爭力越高，越能吸引外資合作並提升整體市場發展。</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>4. 基礎建設</h3>
+        <ul>
+            <li><strong>關聯性：</strong>基礎建設為工具機的生產和分銷提供支持，尤其是在高精密製造需求日益增長的背景下。</li>
+            <li><strong>影響：</strong>
+                <ul>
+                    <li>交通運輸和物流系統的完善降低了原材料和成品的運輸成本。</li>
+                    <li>工業技術、教育系統和研發設施的完善支持了工具機行業的持續創新。</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>綜合分析</h3>
+        <p>
+            IMD 競爭力指標的表現為評估工具機市場潛力提供了方向：
+        </p>
+        <ul>
+            <li><strong>高排名的地區：</strong>通常具備穩定的經濟環境、支持性政府政策和完善的基礎設施，為工具機產業提供了有利條件。</li>
+            <li><strong>低排名的地區：</strong>可能需要通過政策改革、基礎設施建設和企業支持來提升其競爭力，以吸引更多投資並促進工具機市場的發展。</li>
+        </ul>
+        <p>
+            通過關注這些競爭力因素，工具機製造商和投資者可以更有效地識別市場機會並制定長期策略。
+        </p>
         <form method='post' action={{ url_for('update_data6') }}>
             <p>
             <button type='submit'>更新資料</button>
@@ -110,7 +210,8 @@
 
     
 
-    <h2>各國經濟總覽</h2>
+    <h2 id = "economic-overview">各國經濟總覽</h2>
+    <P>收錄關於公司外銷國家的每項經濟數據</P>
         <form method="post" action="{{ url_for('update_data5') }}" id="updateForm">
             <input type="hidden" name="updated_item" id="updated_item">
             <p>
@@ -142,8 +243,8 @@
                 <canvas id="selectionChart"></canvas>
             </div>
         </div>
-    <h2>各國Swift占比</h2>
-
+    <h2 id = "swift-share">各國Swift占比</h2>
+        <P>環球銀行金融電信協會（SWIFT）是全球金融機構之間的主要通訊平台，負責標準化和安全地傳輸金融交易信息。各國在 SWIFT 系統中的使用比例，特別是不同貨幣的支付佔比。<strong>若人民幣佔比低於3%便啟動雙幣避險。</strong></P>
         <form method='post' action={{ url_for('update_data12') }}>
             <p>
             <button type='submit'>更新資料</button>
@@ -158,7 +259,8 @@
             <canvas id="myChart3"></canvas>
         </div>
     
-    <h2>各國經濟數據</h2>
+    <h2 id  = "financial-market">各國金融市場數據</h2>
+        <p>股、匯、債、商品等市場之資訊</p>
         <form method='post' action={{ url_for('update_data13') }}>
             <p>
             <button type='submit'>更新資料</button>
@@ -189,20 +291,100 @@
             </div>
         </div>
     
-    <h2>各機場航空吞吐量</h2>
-        <form method='post' action={{ url_for('update_data10') }}>
-            <p>
-            <button type='submit'>更新資料</button>
-            </p>
-        </form>
-        <!-- 各機場航空吞吐量折線圖: x:時間, y: 數量 -->
-        <div style="width: 80%">
-            <canvas id="airportTrafficChart"></canvas>
-        </div>
+    <h2 id = "airport-traffic">各機場航空吞吐量</h2>
+    <h3>機場航空吞吐量對工具機市場的影響</h3>
+    <p>機場的航空吞吐量反映了一個地區或國家的物流能力和經濟活動水準，對工具機市場的影響如下：</p>
+
+    <h3>1. 物流與供應鏈效率</h3>
+    <ul>
+        <li><strong>航空吞吐量的角色：</strong>
+            <ul>
+                <li>機場吞吐量高的地區，往往擁有成熟的物流基礎設施和高效的運輸網絡。</li>
+                <li>這直接影響工具機的原材料運輸和成品出口速度。</li>
+            </ul>
+        </li>
+        <li><strong>影響：</strong>
+            <ul>
+                <li>工具機製造商可以更快地獲得原材料，縮短生產週期。</li>
+                <li>成品出口的便捷性提升國際市場競爭力。</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>2. 貿易與經濟活動</h3>
+    <ul>
+        <li><strong>貿易樞紐的作用：</strong>航空吞吐量大的機場通常位於國際貿易樞紐，這些地區往往是工具機的主要消費市場。</li>
+        <li><strong>影響：</strong>
+            <ul>
+                <li>更多的進出口活動意味著對工具機（例如加工機、車床）的需求增長，因其支持生產和物流基礎設施的擴展。</li>
+                <li>航空相關產業（如航空製造業和維修業）對高精密工具機的需求更為顯著。</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>3. 工業與區域發展</h3>
+    <ul>
+        <li><strong>與工業發展的連結：</strong>高吞吐量機場所在的地區往往工業化程度較高，吸引更多製造業投資。</li>
+        <li><strong>影響：</strong>工具機市場隨著區域製造業和工業升級而增長，特別是在航空航天、汽車製造和高科技產業中。</li>
+    </ul>
+
+    <h3>4. 高科技製造需求</h3>
+    <ul>
+        <li><strong>航空業對工具機的特殊需求：</strong>航空產業需要高精度、高可靠性的工具機來生產和維修飛機零部件。</li>
+        <li><strong>影響：</strong>航空吞吐量高的機場通常有更多的維修站點和製造基地，這對工具機的需求具有推動作用。</li>
+    </ul>
+
+    <h3>5. 市場戰略考量</h3>
+    <ul>
+        <li><strong>工具機製造商的佈局：</strong>工具機製造商可根據航空吞吐量的數據，選擇在物流樞紐或高需求地區設置生產和分銷中心。</li>
+        <li><strong>影響：</strong>靠近高吞吐量機場的佈局有助於縮短交貨時間並降低運輸成本。</li>
+    </ul>
+
+    <h3>結論</h3>
+    <p>
+        航空吞吐量對工具機市場的影響體現在以下幾個方面：
+    </p>
+    <ul>
+        <li>提升物流效率，縮短生產與交付週期。</li>
+        <li>刺激貿易活動，帶動對工具機的需求。</li>
+        <li>支持航空業和其他高端製造業的發展，增加高精密工具機的需求。</li>
+        <li>驅動製造商在高吞吐量地區佈局，增強市場反應能力。</li>
+    </ul>
+    <p>工具機製造商可根據航空吞吐量數據，制定精準的市場策略，抓住潛在機遇。</p>
+
+    <form method='post' action={{ url_for('update_data10') }}>
+        <p>
+        <button type='submit'>更新資料</button>
+        </p>
+    </form>
+    <!-- 各機場航空吞吐量折線圖: x:時間, y: 數量 -->
+    <div style="width: 80%">
+        <canvas id="airportTrafficChart"></canvas>
+    </div>
         
 
 
-    <h2>中國汽車銷量</h2>
+    <h2 id = "car-sales">中國汽車銷量</h2>
+    <h3>汽車銷量對工具機市場的影響</h3>
+    <p>汽車銷量對工具機市場的影響可以從多個層面來分析，因為汽車製造是工具機的重要應用領域之一。以下是幾個關鍵點：</p>
+
+    <h3>1. 汽車需求與工具機需求的直接關聯</h3>
+    <ul>
+        <li><strong>需求驅動：</strong>汽車銷量的增加通常意味著汽車製造商需要更多的零部件，這直接提高了對工具機（如CNC機床、車床、銑床等）的需求，尤其是在汽車零部件加工、模具製造和結構件生產方面。</li>
+        <li><strong>設備更新與擴充：</strong>隨著汽車生產規模的增長，製造商可能需要擴充生產能力或升級現有設備，進一步促進工具機市場的增長。</li>
+    </ul>
+
+    <h3>2. 汽車製造技術對工具機的影響</h3>
+    <ul>
+        <li><strong>輕量化與高精度需求：</strong>電動車和混合動力車的普及要求輕量化材料（如鋁合金和碳纖維複合材料）和更高精度的加工技術，推動工具機製造商開發高性能的加工設備。</li>
+        <li><strong>新能源汽車專用設備：</strong>例如電池殼體、電機外殼的加工，這些都需要特定的工具機，為市場創造新的需求。</li>
+    </ul>
+
+    <h3>3. 經濟周期的影響</h3>
+    <ul>
+        <li><strong>汽車市場與經濟波動：</strong>汽車銷量通常與經濟景氣程度高度相關。當經濟繁榮時，汽車銷量提升，工具機市場受益；反之，當經濟不景氣時，汽車製造商削減資本支出，可能導致工具機需求減少。</li>
+        <li><strong>市場延遲效應：</strong>工具機市場的波動通常滯後於汽車市場，因為設備投資是長期決策，且需要一段時間來完成規劃與執行。</li>
+    </ul>
     <form method='post' action={{ url_for('update_data14') }}>
         <p>
         <button type='submit'>更新資料</button>
@@ -211,7 +393,9 @@
     <div style="height:90%;width:90%;">
         <canvas id="dualYAxisChart"></canvas>
     </div>
-    
+    <button id="backToTop" style="display:none; position:fixed; bottom:20px; right:20px; padding:10px 20px; font-size:14px; background-color:#007BFF; color:white; border:none; border-radius:5px; cursor:pointer;">
+        Back to Top
+    </button> 
 
 </body>
 
@@ -917,6 +1101,27 @@
                     }
                 }
             }
+        });
+    </script>
+    <script>
+        // 取得按鈕
+        const backToTopButton = document.getElementById("backToTop");
+    
+        // 當滾動時觸發
+        window.addEventListener("scroll", () => {
+            if (window.scrollY > 200) { // 當滾動超過 200px 時顯示按鈕
+                backToTopButton.style.display = "block";
+            } else {
+                backToTopButton.style.display = "none";
+            }
+        });
+    
+        // 點擊按鈕時滑動回頂部
+        backToTopButton.addEventListener("click", () => {
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth" // 平滑滾動
+            });
         });
     </script>
 </body>

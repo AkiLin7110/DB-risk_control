@@ -6,30 +6,40 @@ import ddddocr
 from IPython.display import Image
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
-
 from pytrends.request import TrendReq
 from tqdm import tqdm
 import time
-
 import numpy as np
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from wordcloud import WordCloud, STOPWORDS
 import matplotlib.pyplot as plt
-
 import re
 import undetected_chromedriver as uc
 import json
 import arrow
+import os
 
 session = requests.Session()
-
 headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
 }
+FILE_SOURCE  = "auto/new_data"
+FILE_DESTINATION = "auto/data"
+FILE_PREVIOUS = "auto/previous_data"
+
+def move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name):
+    source_path = f"{FILE_DESTINATION}/{file_name}"
+    destination_path = f"{FILE_PREVIOUS}/{file_name}"
+    
+    if os.path.exists(source_path):
+        os.replace(source_path, destination_path)
+        print(f"\033[7;34m'{source_path}' -> '{destination_path}' successfully!\033[0m")
+    else:
+        print(f"Error: '{source_path}' does not exist.")
+
 
 def get_data1(filepath:str, data_type:str):
     '''import/export'''
@@ -155,7 +165,7 @@ def get_data2(GEO:str, query:str):
     df = df.sort_index()
     return df
 
-def get_data3(lastet_month:str, function_type = 0):
+def get_data3(lastet_month:str, function_type = 1):
     if function_type == 0:
         '''lastest_month: 11308'''
         payload = {
@@ -225,7 +235,7 @@ def get_data3(lastet_month:str, function_type = 0):
     df.index = df['日期']
     del df['日期']
 
-    df = df.map(lambda x: np.nan if x == '' else x)
+    df = df.applymap(lambda x: np.nan if x == '' else x)
     df = df.astype(float)
     df = df[df.columns[:-1]].copy()
     print('完成爬蟲!')
@@ -275,11 +285,13 @@ def get_data4():
         # Extract the necessary information: 公佈時間, 標題, and URL
         for row in rows:
             columns = row.find_all("td")
-            company_name = columns[2].text.strip()
-            plans_name = columns[3].text.strip()
-            date = columns[4].text.strip()
+            company_name = columns[3].text.strip()
+            plans_name = columns[4].text.strip()
+            category_name = columns[5].text.strip()
+            date = columns[2].text.strip()
+            plans_type = columns[1].text.strip()
             # link = 'https://tiip.itnet.org.tw/'+columns[2].find("a")["href"]
-            plans2.append({"公司名稱": company_name, "計畫名稱": plans_name, "核定日期": date})
+            plans2.append({"計畫種類": plans_type, "公司名稱": company_name, "計畫名稱": plans_name, "核定日期": date, "主題式名稱" : category_name})
     return pd.DataFrame(plans2)
 
 def get_data5(GEO:str, formatted_time):
@@ -391,7 +403,7 @@ def get_data6():
         DF.index = DF['terms']
         del DF['terms']
         DF = DF.T
-        DF.to_excel(f'auto/new_data/6_IMD競爭力指標_{GEO}.xlsx')
+        DF.to_excel(f'{FILE_SOURCE}/6_IMD競爭力指標_{GEO}.xlsx')
     return 1
 
 def get_data7_1():
@@ -575,7 +587,7 @@ def get_data8_1(query:str, forums:list):
         driver.get(f'https://www.reddit.com/r/{forum}/search/?q={query}&type=link&cId=fc7a58b4-f24e-42e5-b633-51c75a99c047&iId=46e77d77-e6e8-4434-94f3-4dcbed0ada05')
         time.sleep(2)
         while signal:
-            scroll_down()
+            scroll_down(driver)
             time.sleep(2)
             tmp = driver.find_elements(By.XPATH, '//*[@id="main-content"]/div/reddit-feed/faceplate-tracker')
             j = i
@@ -588,8 +600,9 @@ def get_data8_1(query:str, forums:list):
                     if results[-1]['title'] == title:
                         signal = 0
                         break
+                date = driver.find_elements(By.XPATH, f'//*[@id="main-content"]/div/reddit-feed/faceplate-tracker[{i}]/post-consume-tracker/div/div/div[1]/span/faceplate-timeago/time')[0].get_attribute('datetime')
                 website = driver.find_elements(By.XPATH, f'//*[@id="main-content"]/div/reddit-feed/faceplate-tracker[{i}]/post-consume-tracker/div/faceplate-tracker/h2/a')[0].get_attribute('href')
-                results.append({'forum':forum,'title':title, 'website':website})
+                results.append({'forum':forum,'title':title,'date': date,'website':website})
     
     df = pd.DataFrame(results)
     return df
@@ -601,7 +614,7 @@ def get_data8_2(filename:str):
     driver.maximize_window()
     all_questions = []
     all_comments = []
-    # for i in tqdm(range(0,10)):
+    # for i in tqdm(range(0,5)):
     for i in tqdm(range(0,len(results))):
         driver.get(results['website'][i])
         time.sleep(1)
@@ -648,7 +661,7 @@ def get_data8_3():
     sources = ['title', 'subtitle', 'content']
 
     for query in querys:
-        results = pd.read_excel(f'auto/new_data/8_競品分析_{query}.xlsx')
+        results = pd.read_excel(f'{FILE_DESTINATION}/8_競品分析_{query}.xlsx')
         for source in sources:
             text1 = ''
             text2 = ''
@@ -659,13 +672,11 @@ def get_data8_3():
                 for tmp in text:
                     text1+=tmp
             if 'subtitle' in sources:
-                f = open(f'auto/new_data/8_{query}_questions.txt')
-                text2 = f.read()
-                f.close()
+                with open(f'{FILE_DESTINATION}/8_{query}_questions.txt', encoding='utf-8') as f:
+                    text2 = f.read()
             if 'content' in sources:
-                f = open(f'auto/new_data/8_{query}_comments.txt')
-                text3 = f.read()
-                f.close()
+                with open(f'{FILE_DESTINATION}/8_{query}_comments.txt', encoding='utf-8') as f:
+                    text2 = f.read()
 
             texts = text1 + text2 + text3 
             wordcloud = WordCloud(scale=5, colormap='coolwarm', background_color='white').generate(texts)
@@ -702,8 +713,7 @@ def get_data9_1():
 
 
     try:
-        updatepath = 'auto/new_data/'
-        path_update = f'{updatepath}9_1原料價格.json'
+        path_update = f'{FILE_SOURCE}/9_1原料價格.json'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         DAta = json.loads(f)
@@ -766,7 +776,8 @@ def get_data9_1():
                     if k!=0 and k!=2:
                         if loc == 4:
                             for j in range(0,len(columns)):
-                                data[name][columns[j]].append(values[j]) 
+                                data[name][columns[j]].append(values[j])
+                            data[name]['date'].append(formatted_date)
                 else:
                     if loc == 2 or loc == 3 or loc == 4 or k>=8 :
                         values = data_list[i].rsplit(' ', 1)
@@ -775,7 +786,7 @@ def get_data9_1():
                         
                     for j in range(0,len(columns)):
                         data[name][columns[j]].append(values[j])
-                data[name]['date'].append(formatted_date)
+                    data[name]['date'].append(formatted_date)
 
     json_data = json.dumps(DAta)
     with open(path_update, "w") as json_file:
@@ -828,7 +839,7 @@ def get_data9_2():
 
         df = pd.DataFrame(df)
         df['date'] = driver.find_elements(By.XPATH, '//*[@id="dataset-tab-2"]/div/div[2]/div[1]/div/input')[0].get_attribute("max").replace('-','/')
-        df.to_excel(f"auto/new_data/9_2_{query.replace('/','_')}.xlsx")
+        df.to_excel(f"{FILE_SOURCE}/9_2_{query.replace('/','_')}.xlsx")
     return 1
     
 def get_data_10():
@@ -880,7 +891,7 @@ def get_data_12():
     return df   
 
 def get_data13(query):
-
+    file_name = '13_TradingEconomics.json'
     url = f'https://tradingeconomics.com/{query}'
     headers = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
@@ -933,8 +944,7 @@ def get_data13(query):
 
     # 開啟json
     try:
-        updatepath = 'auto/data/'
-        path_update = f'{updatepath}13_TradingEconomics.json'
+        path_update = f'{FILE_DESTINATION}/{file_name}'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         df_update = json.loads(f)
@@ -943,6 +953,7 @@ def get_data13(query):
     except:
         data = {}
 
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
     if query not in data.keys():
         data[query] = {}
     for i in range(0,len(DF)):
@@ -1014,7 +1025,7 @@ def get_data14():
             data.append([time, sales, yoy])
 
     df = pd.DataFrame(data, columns=["时间", "销量", "同比"]).drop_duplicates().sort_values('时间', ignore_index = True)
-    df.to_excel('auto/new_data/14_中國汽車銷量.xlsx')
+    df.to_excel(f'{FILE_SOURCE}/14_中國汽車銷量.xlsx')
 
 if __name__ == '__main__':
 
@@ -1046,7 +1057,7 @@ if __name__ == '__main__':
     for GEO in GEOs:
         for query in querys:
             df = get_data2(GEO, query = query)
-            df.to_excel(f'auto/new_data/2_google_{GEO}_{query}.xlsx')
+            df.to_excel(f'{FILE_SOURCE}/2_google_{GEO}_{query}.xlsx')
             time.sleep(10)
 
     # 3:　主要國家工業生產增加率
@@ -1070,8 +1081,8 @@ if __name__ == '__main__':
 
     # 7-1: 主幹航線準確率
     # df1, df2 = get_data7_1()
-    # df1.to_excel(f'auto/new_data/7_上海航運交易所_全球主幹航線綜合準班率指數.xlsx', header = 0, index = 0)
-    # df2.to_excel(f'auto/new_data/7_上海航運交易所_全球主幹航線到離港與收發獲準班率指數.xlsx', header = 0, index = 0)
+    # df1.to_excel(f'{FILE_SOURCE}/7_上海航運交易所_全球主幹航線綜合準班率指數.xlsx', header = 0, index = 0)
+    # df2.to_excel(f'{FILE_SOURCE}/7_上海航運交易所_全球主幹航線到離港與收發獲準班率指數.xlsx', header = 0, index = 0)
 
     # 7-2: 港口班輪準確率
     # df = get_data7_2()

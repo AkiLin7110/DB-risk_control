@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, redirect, url_for, jsonify
-from auto.auto_crawl import get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10, get_data_12, get_data13, get_data14
+from auto.auto_crawl import move_file, get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10, get_data_12, get_data13, get_data14
 import json
 import pandas as pd
 from operator import itemgetter
@@ -12,14 +12,9 @@ from dash import Dash, dcc, html
 import plotly.express as px
 
 app = Flask(__name__)
-file_source  = "auto/new_data"
-file_destination = "auto/data"
-file_previous = "auto/previous_data"
-
-def move_file(file_destination, file_previous, file_name):
-    os.replace("{file_destination}/{file_name}", "{file_previous}/{file_name}" )
-    return "{file_destination}/{file_name} -> {file_previous}/{file_name} successfully!"
-
+FILE_SOURCE  = "auto/new_data"
+FILE_DESTINATION = "auto/data"
+FILE_PREVIOUS = "auto/previous_data"
 
 @app.route('/')
 @app.route('/hello')
@@ -163,10 +158,12 @@ def update_data0_1():
 
 @app.route('/update/get_data1', methods=['GET', 'POST'])
 def update_data1():
-    filepath = 'auto/new_data/'
     GEO = '中國大陸'
-    data_import = get_data1(filepath,'import')
-    data_export = get_data1(filepath,'export')
+    file_name = f'1_{GEO}_進出口總值(美元).xlsx'
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
+
+    data_import = get_data1(FILE_SOURCE,'import')
+    data_export = get_data1(FILE_SOURCE,'export')
     test = pd.merge(data_import, data_export, how = 'outer', on = 'date')
     def convert_roc_to_gregorian(roc_date):
         # Split year and month
@@ -183,19 +180,31 @@ def update_data1():
     # Apply the conversion to the dataframe
     test['gregorian_date'] = test['date'].apply(convert_roc_to_gregorian)
     test = test.sort_values('gregorian_date')
-    test.to_excel(f'{filepath}1_{GEO}_進出口總值(美元).xlsx')
+    test.to_excel(f'{FILE_DESTINATION}/1_{GEO}_進出口總值(美元).xlsx')
     message = '更新完成: 進出口資料'
     return render_template('update_product.html', message = message)
 
 
 @app.route('/update/get_data2', methods=['POST'])
 def update_data2():
-    files = os.listdir('auto/new_data')
+    # 欲更新檔案
+    file_name = '2_google_trends.json'
+
+    # 先確認，是否有存在於FILE_SOURCE
+    GEOs = ['CN', 'IN', 'MA', 'TR', 'US']
+    querys = ['controller','machine tool']
+    files = os.listdir(FILE_SOURCE)
     google_files = [file for file in files if "google" in file.lower()]
 
+    for GEO in GEOs:
+        for query in querys:
+            file = f"2_google_{GEO}_{query}.xlsx"
+            if file not in google_files:
+                df = get_data2(GEO, query)
+                df.to_excel(f"{FILE_SOURCE}/{file}")
+                print('更新檔案: f"{FILE_SOURCE}/{file}"')
     try:
-        updatepath = 'auto/data/'
-        path_update = f'{updatepath}2_google_trends.json'
+        path_update = f'{FILE_DESTINATION}/{file_name}'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         df_update = json.loads(f)
@@ -203,10 +212,11 @@ def update_data2():
     except:
         df_update = {}
 
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name = f"{file_name}")
     for google_file in google_files:
         GEO = google_file.split('_')[-2]
         query = google_file.split('_')[-1].split('.')[0]
-        df = pd.read_excel(f'auto/new_data/{google_file}')
+        df = pd.read_excel(f'{FILE_SOURCE}/{google_file}')
         df = df.astype(str)
         if GEO not in df_update.keys():
             df_update[f'{GEO}'] = {}
@@ -225,55 +235,58 @@ def update_data2():
         json_file.write(json_data)
     message = '更新完成: 搜尋資料'
 
-    # return redirect(url_for('product_analysis', GEO=GEO))
+    # # return redirect(url_for('product_analysis', GEO=GEO))
     return render_template('update_product.html', message = message)
 
 @app.route('/update/get_data3', methods=['GET', 'POST'])
 def update_data3():
-    filepath_update = 'auto/previous_data/'
-    filepath_new = 'auto/new_data'
-    filepath_store = 'auto/data'
-
+    file_name = '3_主要國家工業生產增加率.xlsx'
     lastet_month = '11308'
 
-    file_path = f'{filepath_update}/3_主要國家工業生產增加率.xlsx'
+    file_path = f'{FILE_PREVIOUS}/{file_name}'
     if not os.path.exists(file_path):
         DF = get_data3(lastet_month, function_type = 0)
-        DF.to_excel(f'{filepath_update}/3_主要國家工業生產增加率.xlsx')
-    DF = pd.read_excel(f'{filepath_update}/3_主要國家工業生產增加率.xlsx')
+        DF.to_excel(f'{FILE_SOURCE}/{file_name}')
+
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name = f"{file_name}")
+    DF = pd.read_excel(f'{FILE_PREVIOUS}/{file_name}')
 
     df = get_data3(lastet_month, function_type = 1)
-    df.to_excel(f'{filepath_new}/3_主要國家工業生產增加率.xlsx')
-    df = pd.read_excel(f'{filepath_new}/3_主要國家工業生產增加率.xlsx')
+    print(df)
+    df.to_excel(f'{FILE_SOURCE}/{file_name}')
+    df = pd.read_excel(f'{FILE_SOURCE}/{file_name}')
 
-    if df.iloc[-1]['日期'] not in DF['日期'].values:
-        DF = pd.concat([DF,pd.DataFrame(df.iloc[-1]).T], axis = 0)
-    
-    DF.to_excel(f'{filepath_store}/3_主要國家工業生產增加率.xlsx', index = 0)
+    for i in range(0,len(df)):
+        if df.iloc[i]['日期'] not in DF['日期'].values:
+            print(f"concat: {df.iloc[i]['日期']}")
+            DF = pd.concat([DF,pd.DataFrame(df.iloc[i]).T], axis = 0)
+    DF = DF.sort_values('日期')
+    DF.to_excel(f'{FILE_DESTINATION}/{file_name}', index = 0)
     
     message = '更新完成: 工業生產增加率'
     return render_template('update_product.html', message = message)
 
 @app.route('/update/get_data4', methods=['GET', 'POST'])
 def update_data4():
+    file_name = '4_政府推動計畫名單.xlsx'
     df = get_data4()
-    df.to_excel('auto/new_data/4_政府推動計畫名單.xlsx', index = 0)
+    df.to_excel(f'{FILE_SOURCE}/4_政府推動計畫名單.xlsx', index = 0)
 
     # 讀取新的資料
-    df = pd.read_excel('auto/new_data/4_政府推動計畫名單.xlsx')
+    df = pd.read_excel(f'{FILE_SOURCE}/4_政府推動計畫名單.xlsx')
 
     # 更新檔案路徑
-    updatepath = 'auto/data/'
-    path_update = f'{updatepath}4_政府推動計畫名單.xlsx'
+    path_update = f'{FILE_DESTINATION}/4_政府推動計畫名單.xlsx'
 
     # 嘗試讀取舊資料，若檔案不存在，則建立空的 DataFrame
     try:
         DF = pd.read_excel(path_update)
     except FileNotFoundError:
-        DF = pd.DataFrame(columns=['公司名稱', '計畫名稱', '核定日期'])
+        DF = pd.DataFrame(columns=['公司名稱', '計畫名稱', '核定日期', '主題式名稱'])
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name = f"{file_name}")
 
     # 合併新資料與舊資料，並去除重複資料
-    DF = pd.concat([DF, df], ignore_index=True).drop_duplicates(subset=['公司名稱', '計畫名稱', '核定日期'])
+    DF = pd.concat([DF, df], ignore_index=True).drop_duplicates(subset=['公司名稱', '計畫名稱', '核定日期', '主題式名稱'])
 
     # 依照 '核定日期' 排序
     DF = DF.sort_values(by='核定日期', ignore_index=True)
@@ -287,11 +300,11 @@ def update_data4():
 
 @app.route('/update/get_data5', methods=['GET', 'POST'])
 def update_data5():
+    file_name_0 = '5_經濟數據'
     updated = request.form.get('updated_item')  # Retrieve updated_item from the form
     # updated = 'all'
 
     GEOs = ['china', 'india', 'malaysia', 'turkey', 'united-states']
-    filepath = 'auto/new_data/'
 
     # 取得當前時間
     now = arrow.now()
@@ -306,8 +319,8 @@ def update_data5():
             df, _ = get_data5(GEO, formatted_time)
             updated_items = [updated]
 
-        df.to_excel(f'{filepath}5_經濟數據_{GEO}.xlsx', index = 0)
-        path_update = f'auto/data/5_經濟數據_{updated}.json'
+        df.to_excel(f'{FILE_SOURCE}/{file_name_0}_{GEO}.xlsx', index = 0)
+        path_update = f'{FILE_DESTINATION}/{file_name_0}_{updated}.json'
 
         try:
             jsonFile = open(path_update,'r')
@@ -323,14 +336,12 @@ def update_data5():
         # print(f"Processing data for {GEO}: {df_update[GEO]}")
 
         # 寫入到舊有的excel檔的不同sheet裡面
-        path_new = f'{filepath}5_經濟數據_{GEO}.xlsx'
+        path_new = f'{FILE_SOURCE}/5_經濟數據_{GEO}.xlsx'
+        move_file(FILE_DESTINATION, FILE_PREVIOUS, f'{file_name_0}_{updated}.json')
         for updated_item in updated_items:
 
             df = pd.read_excel(path_new) 
             index_names = df[df['總經種類'] == f'{updated_item}']['指標名稱'].values
-            print(index_names)
-            
-
 
             for tmp in index_names:
                 if tmp not in df_update[GEO].keys():
@@ -399,7 +410,8 @@ def update_data7():
 
 
 
-    jsonFile = open('auto/data/7_上海航運交易所_航運數據.json','r')
+    file_name = '7_上海航運交易所_航運數據.json'
+    jsonFile = open(f'auto/data/{file_name}','r')
     f =  jsonFile.read()   # 要先使用 read 讀取檔案
     shipping_db = json.loads(f)      # 再使用 loads
     # shipping_db = {}
@@ -413,8 +425,7 @@ def update_data7():
     df7_5_keys = list(df7_5['指數名稱'].values+'_time')+list(df7_5['指數名稱'].values)
     df7_6_keys = list(df7_6['指數名稱'].values+'_time')+list(df7_6['指數名稱'].values)
 
-
-
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
     def update_db(update_keys, update_data, shipping_db, data_type):
         if data_type == '7_1':
             query = '指數名稱'
@@ -494,7 +505,7 @@ def update_data7():
     shipping_db = update_db(update_keys = df7_5_keys, update_data = df7_5, shipping_db = shipping_db, data_type = '7_5')
     shipping_db = update_db(update_keys = df7_6_keys, update_data = df7_6, shipping_db = shipping_db, data_type = '7_6')
 
-    path_update = 'auto/data/7_上海航運交易所_航運數據.json'
+    path_update = f'{FILE_DESTINATION}/{file_name}'
     json_data = json.dumps(shipping_db)
     with open(path_update, "w") as json_file:
         json_file.write(json_data)
@@ -504,7 +515,6 @@ def update_data7():
 
 @app.route('/update/get_data8', methods=['GET', 'POST'])
 def update_data8():
-    filepath = 'auto/new_data/'
     # Retrieve the query from the form submission
     # querys = request.form.get('query', 'fanuc')  # Default to 'fanuc' if no query provided
     querys = ""
@@ -514,33 +524,51 @@ def update_data8():
     
     # Call functions with the dynamic query
     for query in querys:
+        # new_data
         df = get_data8_1(query, forums)
-        df.to_excel(f'{filepath}8_競品分析_{query}.xlsx', index=False)
+        df.to_excel(f'{FILE_SOURCE}/8_競品分析_{query}.xlsx', index=False)
+
+        # save_data
+        file_name = f'8_競品分析_{query}.xlsx'
+        move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
+        source_path = f"{FILE_SOURCE}/{file_name}"
+        destination_path = f"{FILE_DESTINATION}/{file_name}"
+        df = pd.read_excel(source_path)
+
+        if os.path.exists(destination_path):
+            DF = pd.read_excel(destination_path)
+            for i in range(0,len(df)):
+                if df.iloc[i].values in DF.values:
+                    continue
+                DF = pd.concat([DF,df])
+        else:
+            DF = df.copy()
+        DF.to_excel(destination_path)
         
-        filename = f'{filepath}8_競品分析_{query}.xlsx'
-        output = get_data8_2(filename)
+        output = get_data8_2(f'{FILE_DESTINATION}/8_競品分析_{query}.xlsx')
         names = ['questions','comments']
         for i in range(0,len(output)):
-            with open(f"{filepath}8_{query}_{names[i]}.txt","w", encoding = 'UTF-8') as file:
+            file_name = f'8_{query}_{names[i]}.txt'
+            move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
+            with open(f"{FILE_DESTINATION}/{file_name}","w", encoding = 'UTF-8') as file:
                 file.write(output[i])
-        message = f'更新完成: 文字雲資料 for {query}'
+        
     
     get_data8_3()
-    
+    message = f'更新完成: 文字雲資料 for {querys}'
     return render_template('update_product.html', message=message)
 
 
 @app.route('/update/get_data9', methods=['GET', 'POST'])
 def update_data9():
-    filepath = 'auto/new_data/'
-    storepath = 'auto/data/'
 
     # 9_1: 交易價格
     get_data9_1()
+    file_name = '9_1原料價格.json'
+
     # Load新data
     try:
-        updatepath = 'auto/new_data/'
-        path_update = f'{updatepath}9_1原料價格.json'
+        path_update = f'{FILE_SOURCE}/{file_name}'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         df_update = json.loads(f)
@@ -550,25 +578,27 @@ def update_data9():
 
     # 初始化變數
     signal_first = 0
-    storepath = 'auto/data/'
-    path_store = f'{storepath}9_1原料價格.json'
+    path_store = f'{FILE_DESTINATION}/{file_name}'
 
     # 檢查路徑是否存在，若不存在則建立路徑
-    os.makedirs(storepath, exist_ok=True)
+    os.makedirs(FILE_DESTINATION, exist_ok=True)
 
     # 讀取舊的 JSON 文件
     try:
         with open(path_store, 'r') as jsonFile:
             df_store = json.load(jsonFile)
+        print('讀取舊的 JSON 文件')
     except FileNotFoundError:
         # 若文件不存在，則初始化為空字典
-        signal_first = 1
-        df_store = {}
+        signal_first = 0
+        df_store = df_update.copy()
+        print('若文件不存在，則初始化為空字典')
     except json.JSONDecodeError:
         # 若 JSON 格式錯誤，初始化為空字典
         signal_first = 1
         df_store = {}
 
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
     if signal_first == 1:
         df_store = df_update.copy()
     else:
@@ -585,15 +615,15 @@ def update_data9():
     with open(path_store, "w") as json_file:
         json_file.write(json_data) 
 
+    # 9_2: 原料交易量
     get_data9_2()
-    file_path = os.listdir('auto/new_data')
+    file_name = '9_2原料交易量.json'
+    file_path = os.listdir(f'{FILE_SOURCE}')
     file_paths = [path for path in file_path if 'ferrous'in path or 'Ferrous' in path]
-    filenames = file_paths.copy()
     first_time = 0
 
     try:
-        updatepath = 'auto/data/'
-        path_update = f'{updatepath}9_2原料交易量.json'
+        path_update = f'{FILE_DESTINATION}/{file_name}'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         DF = json.loads(f)
@@ -604,8 +634,9 @@ def update_data9():
         DF['Ferrous'] = {}
         DF['Non-ferrous'] = {}
 
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
     for file_path in file_paths:
-        df = pd.read_excel(f'auto/new_data/{file_path}', index_col=0)
+        df = pd.read_excel(f'{FILE_SOURCE}/{file_path}', index_col=0)
         cleaned_filename = file_path.replace('9_2_', '').replace('.xlsx', '').split('_')
         if first_time == 1:
             DF[cleaned_filename[0]][cleaned_filename[1]] = {}
@@ -621,8 +652,7 @@ def update_data9():
             for column in columns:
                 data[column].append(str(df.iloc[i][column]))
 
-    storepathpath = 'auto/data/'
-    path_store = f'{updatepath}9_2原料交易量.json'
+    path_store = f'{FILE_DESTINATION}/{file_name}'
     json_data = json.dumps(DF)
     with open(path_store, "w") as json_file:
         json_file.write(json_data) 
@@ -693,14 +723,14 @@ def economic_analysis():
 def update_data6():
     # 更新資料
     get_data6()
-
+    file_name = '6_IMD競爭力指標.json'
+    
     # 寫入json
-    paths = os.listdir('auto/new_data')
+    paths = os.listdir(FILE_SOURCE)
     dirs = [tmp for tmp in paths if '6_IMD' in tmp ]
 
     try:
-        updatepath = 'auto/data/'
-        path_update = f'{updatepath}6_IMD競爭力指標.json'
+        path_update = f'{FILE_DESTINATION}/{file_name}'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         DF = json.loads(f)
@@ -708,8 +738,9 @@ def update_data6():
     except:
         DF = {}
 
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
     for i in range(0,len(dirs)):
-        df = pd.read_excel(f'auto/new_data/{dirs[i]}', index_col = 0)
+        df = pd.read_excel(f'{FILE_SOURCE}/{dirs[i]}', index_col = 0)
         GEO = dirs[i].split('_')[-1].split('.')[0]
         if GEO not in DF.keys():
             DF[GEO] = {}
@@ -732,8 +763,8 @@ def update_data6():
                     DF[GEO][column].append(df[column].iloc[j])
                     DF[GEO][f'{column}_time'].append(df.index[j])
 
-    path_store = 'auto/data/'
-    path_store = f'{path_store}6_IMD競爭力指標.json'
+    path_store = FILE_DESTINATION
+    path_store = f'{path_store}/{file_name}'
     json_data = json.dumps(DF)
     with open(path_store, "w") as json_file:
         json_file.write(json_data) 
@@ -745,14 +776,14 @@ def update_data6():
 
 @app.route('/update/get_data10', methods=['GET', 'POST'])
 def update_data10():
-    filepath = 'auto/new_data/'
-    df = get_data_10()
-    df.to_excel(f'{filepath}10_機場吞吐量.xlsx')
 
-    df = pd.read_excel('auto/new_data/10_機場吞吐量.xlsx')
+    df = get_data_10()
+    file_name_0 = '10_機場吞吐量'
+    df.to_excel(f'{FILE_SOURCE}/{file_name_0}.xlsx')
+
+    df = pd.read_excel(f'{FILE_SOURCE}/{file_name_0}.xlsx')
     try:
-        updatepath = 'auto/data/'
-        path_update = f'{updatepath}10_機場吞吐量.json'
+        path_update = f'{FILE_DESTINATION}/{file_name_0}.json'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         DF = json.loads(f)
@@ -760,7 +791,7 @@ def update_data10():
     except:
         DF = {}
 
-
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, f'{file_name_0}.json')
     for i in range(0,len(df)):
         if df.iloc[i]['機場'] not in DF.keys():
             DF[df.iloc[i]['機場']] = []
@@ -770,8 +801,7 @@ def update_data10():
         DF[df.iloc[i]['機場']].append(str(df.iloc[i]['航班數量']))
         DF[f"{df.iloc[i]['機場']}_時間"].append(str(df.iloc[i]['時間']))
 
-    path_store = 'auto/data/'
-    path_store = f'{path_store}10_機場吞吐量.json'
+    path_store = f'{FILE_DESTINATION}/{file_name_0}.json'
     json_data = json.dumps(DF)
     with open(path_store, "w") as json_file:
         json_file.write(json_data) 
@@ -782,20 +812,19 @@ def update_data10():
 
 @app.route('/update/get_data12', methods=['GET', 'POST'])
 def update_data12():
-    filepath = 'auto/new_data/'
     df = get_data_12()
-    df.to_excel(f'{filepath}12_SWIFT各幣別支付占比.xlsx')
+    file_name_0 = '12_SWIFT各幣別支付占比'
+    df.to_excel(f'{FILE_SOURCE}/{file_name_0}.xlsx')
 
-    filepath = 'auto/new_data/'
-    df = pd.read_excel(f'{filepath}12_SWIFT各幣別支付占比.xlsx', index_col = 0)
+    df = pd.read_excel(f'{FILE_SOURCE}/{file_name_0}.xlsx', index_col = 0)
 
-    updatepath = 'auto/data/'
-    path_update = f'{updatepath}12_SWIFT各幣別支付占比.json'
+    path_update = f'{FILE_DESTINATION}/{file_name_0}.json'
     jsonFile = open(path_update,'r')
     f =  jsonFile.read()   # 要先使用 read 讀取檔案
     df_update = json.loads(f)
     jsonFile.close()
 
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, f'{file_name_0}.json')
     for i in range(0,len(df)):
         if df['幣別'].iloc[i] not in df_update.keys():
             df_update[df['幣別'].iloc[i]] = {}
@@ -821,7 +850,6 @@ def update_data12():
 def update_data13():
     querys = ['stocks','currencies', 'commodities', 'crypto', 'bonds']
     for query in querys:
-        print(query)
         get_data13(query)
 
     message = f'更新完成: {query} 資料'
@@ -830,19 +858,19 @@ def update_data13():
 @app.route('/update/get_data14', methods=['GET', 'POST'])
 def update_data14():
     get_data14()
-
-    data = pd.read_excel('auto/new_data/14_中國汽車銷量.xlsx', index_col=0)
+    file_name = '14_中國汽車銷量'
+    data = pd.read_excel(f'{FILE_SOURCE}/{file_name}.xlsx', index_col = 0)
     try:
-        updatepath = 'auto/data/'
-        path_update = f'{updatepath}14_中國汽車銷量.json'
+        path_update = f'{FILE_DESTINATION}/{file_name}.json'
         jsonFile = open(path_update,'r')
         f =  jsonFile.read()   # 要先使用 read 讀取檔案
         df_update = json.loads(f)
         jsonFile.close()
     except:
         df_update = {}
-        
-    df_update['中國汽車銷量'] = {}
+        df_update['中國汽車銷量'] = {}
+
+    move_file(FILE_DESTINATION, FILE_PREVIOUS, f'{file_name}.json')
     for i in range(0,len(data)):
         for j in range(len(data.columns)):
             if data.columns[j] not in df_update['中國汽車銷量'].keys():

@@ -124,12 +124,67 @@
             color: #fff; /* 白色文字 */
         }
 
+        #table-of-contents {
+            background-color: #f9f9f9; /* 目錄背景顏色，淺灰色 */
+            padding: 20px; /* 內距 */
+            border: 1px solid #ddd; /* 邊框 */
+            border-radius: 5px; /* 邊框圓角 */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 添加陰影效果 */
+        }
+
+        #table-of-contents h2 {
+            color: #333; /* 標題文字顏色 */
+            font-weight: bold; /* 標題加粗 */
+        }
+
+        #table-of-contents ul {
+            padding-left: 20px; /* 列表內距 */
+            list-style-type: disc; /* 使用實心圓點樣式 */
+        }
+
+        #table-of-contents li {
+            margin-bottom: 10px; /* 列表項目間距 */
+        }
+
+        #table-of-contents a {
+            text-decoration: none; /* 移除超連結的底線 */
+            color: #007BFF; /* 超連結文字顏色 */
+        }
+
+        #table-of-contents a:hover {
+            text-decoration: underline; /* 滑鼠懸停時添加底線 */
+            color: #0056b3; /* 改變超連結顏色 */
+        }
+        .formula {
+            text-align: left;
+            margin: 0 auto;
+            padding-left: 10px;
+        }
+        .math-block {
+            margin: 0px 0;
+            padding-left: 0px; /* 適當控制公式的縮進 */
+        }
+
 
     </style>
 </head>
 
 <body>
-    <h2>進出口資料</h2>
+    <div id="table-of-contents">
+        <h2>目錄</h2>
+        <ul>
+            <li><a href="#import-export-data">進出口資料</a></li>
+            <li><a href="#search-volume">各國產品搜索量</a></li>
+            <li><a href="#industrial-growth">工業生產增加率</a></li>
+            <li><a href="#gov-projects">政府推動計畫名單</a></li>
+            <li><a href="#economic-overview">各國經濟總覽</a></li>
+            <li><a href="#shipping-data">航運數據</a></li>
+            <li><a href="#word-cloud">文字雲</a></li>
+            <li><a href="#metal-market">金屬市場數據分析</a></li>
+        </ul>
+    </div>
+
+    <h2 id="import-export-data">進出口資料</h2>
     
     <form method='post' action={{ url_for('update_data1') }}>
         <p>
@@ -151,7 +206,21 @@
         </div>
     </div>  
     
-    <h2>各國產品搜索量</h2>
+    <h2 id="search-volume">各國產品搜索量</h2>
+    <p>指在特定時間範圍內，某國家/地區內通過 Google 搜索相關字詞的流量數據。此數據採用相對指數的形式，以下是詳細說明：</p>
+    <h3>1. 指數範圍</h3>
+    <ul>
+        <li><strong>100</strong> 代表該時間範圍內的搜索流量達到最高峰值（最大值）。</li>
+        <li><strong>0</strong> 表示該時段幾乎沒有相關的搜索流量。</li>
+    </ul>
+    <h3>2. 時間比較</h3>
+    <p>若在一段時間內搜索量持續保持 <strong>100</strong>，則表示該段期間的搜索流量大於或等於此前所有時間的最大搜索量。</p>
+    <h3>3. 數據解讀</h3>
+    <ul>
+        <li><strong>持續達到 100</strong>：表明此產品或相關字詞的熱度顯著提升，可能有趨勢性的關注增長。</li>
+        <li><strong>波動數據</strong>：則反映用戶的關注程度隨時間的變化情況。</li>
+    </ul>
+    <p>此方法適用於觀察產品或關鍵字的市場趨勢與受歡迎程度，對制定市場策略和了解用戶行為有重要參考價值。</p>
     <form method="post" action="{{ url_for('update_data2') }}" id="productVolumeForm">
         <input type="hidden" name="updated_item" id="productUpdatedItem">
         <p>
@@ -185,18 +254,59 @@
         </div>
     </div>
 
-    
-    <h2>工業生產增加率</h2>
+    <script id="MathJax-script" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    <h2 id="industrial-growth">工業生產增指數年增率</h2>
     <form method='post' action={{ url_for('update_data3') }}>
         <p>
         <button type='submit'>更新資料</button>
     </p>
     </form>
+    <body>
+        <p>工業生產指數採用<strong>拉氏公式 (Laspeyres Formula)</strong> 計算，主要用於衡量工業部門產品生產量在某一時間與基期之間的相對變動情況。</p>
+        
+        <h3>1.  工業生產指數定義</h3>
+        <p>工業生產指數是一項反映工業部門生產活動變化的指標。根據 109 年工廠校正及營運調查結果，各項產品的權數是基於以市價計算的生產毛值占工業總生產毛值的比重。</p>
+    
+        <h3>2.  計算公式</h3>
+        <div class="formula">
+            <p>指數計算公式：</p>
+            <div class="math-block">
+                \[
+                I_{n,1} = L_{2,1} \times L_{3,2} \times \cdots \times L_{n,n-1} \times 100 = \prod_{k=1}^{n-1} L_{k+1,k} \times 100
+                \]
+            </div>
+            <p>其中：</p>
+            <div class="math-block">
+                \[
+                L_{t+1,t} = \frac{\sum Q_{i,t+1} \cdot P_{i,t}}{\sum Q_{i,t} \cdot P_{i,t}}
+                \]
+            </div>
+            <p>符號說明：</p>
+            <ul>
+                <li>\( Q_{i,t} \)：第 \( t \) 期的生產量</li>
+                <li>\( Q_{i,t+1} \)：第 \( t+1 \) 期的生產量</li>
+                <li>\( P_{i,t} \)：第 \( t \) 期的附加價值單價</li>
+            </ul>
+        </div>
+    
+        <h3>3. 權數計算</h3>
+        <p>各項產品的市價計算之生產毛值計算如下：</p>
+        <p><strong>以市價計算之生產毛值</strong> ＝ 生產價值 － (原材物燃料耗用值 ＋ 電力費用 ＋ 其他費用)</p>
+    </body>
     <div style="height:90%;width:90%;">
         <canvas id="chartContainer"></canvas>
     </div> 
 
-    <h2>政府推動計畫名單</h2>
+    <h2 id="gov-projects">政府推動計畫名單</h2>
+    <h3>1. 主題式研發</h3>
+    <P>為因應產業需求及政策發展方向，急需整合產業相關業者進行研發，由經濟部產業發展署不定期公告研發主題，公開徵求廠商提案，鼓勵業者開發符合主題研發內容之技術、產品或服務，以串連產業鏈發展為主軸，建立產業研發能量，帶動相關產業健全發展及強化整體產業競爭力。</P>
+    <h3>2. 新興育成</h3>
+    <P>因應產業需求及政策發展方向，發展替代性的主流新興產業，鼓勵業者進行開發新興產品或服務，進而構築產業生態體系，經濟部推動「產業升級創新平台輔導計畫」， 並依據「經濟部協助產業創新活動補助獎勵及輔導辦法」（以下簡稱本辦法），訂定「產業升級創新平台輔導計畫申請須知(新興育成計畫)」（以下簡稱本須知），以補助方式協助廠商自行或異業結合， 或運用學研前瞻科研成果，發展新興產業之產品或服務。</P>
+    <h3>3. 創新優化</h3>
+    <P>為鼓勵具指標性廠商掌握關鍵技術/產品，以建構完整供應鏈體系，或引導業者建立整體系統解決方案供應者能量，以擴大整廠整案海外輸出，爭取國際商機，經濟部推動「產業升級創新平台輔導計畫」，並依據「經濟部協助產業創新活動補助獎勵及輔導辦法」（以下簡稱本辦法），訂定「產業升級創新平台輔導計畫申請須知(創新優化計畫)」（以下簡稱本須知），以補助方式協助廠商開發關鍵設備、材料及零組件，提供跨領域系統整合，發展整體解決方案。</P>
+    <h3>4. 產業高值</h3>
+    <P>為引導產業朝向高值化發展，鼓勵業者切入高端產品應用市場，以提升整體產業附加價值率，塑造我國高值化產品形象，經濟部推動「產業升級創新平台輔導計畫」，並依據「經濟部協助產業創新活動補助獎勵及輔導辦法」（以下簡稱本辦法），訂定「產業升級創新平台輔導計畫申請須知(產業高值計畫)」（以下簡稱本須知），以補助方式協助廠商藉由高值化研發掌握價值鏈之關鍵技術，或開發創新的服務加值模式，切入高端產品應用市場，創造產品單價(毛利)或銷售量倍數成長之商品價值。</P>
+
     <form method='post' action={{ url_for('update_data4') }}>
         <p>
         <button type='submit'>更新資料</button>
@@ -209,7 +319,8 @@
         {% endfor %}
     </div>
 
-    <h2>各國經濟總覽</h2>
+    <h2 id="economic-overview">各國經濟總覽</h2>
+    <P>收錄關於公司外銷國家的主要經濟數據</P>
     <form method="post" action="{{ url_for('update_data5') }}" id="updateForm">
         <!-- Hidden input to store updated_item -->
         <input type="hidden" name="updated_item" id="updated_item">
@@ -243,9 +354,10 @@
         <div style="width:70%">
             <canvas id="selectionChart"></canvas>
         </div>
+        
     </div>
 
-    <h2>航運數據</h2>
+    <h2 id="shipping-data">航運數據</h2>
     <form method='post' action={{ url_for('update_data7') }}>
         <p>
         <button type='submit'>更新資料</button>
@@ -266,12 +378,20 @@
         <button type="button" class="btn btn-primary" name ='{"index": "海上絲綢之路運價指數"}'>海上絲綢之路運價指數</button>
     </div>
     
-    <div style = "width:70%">
-        <canvas id="shipping_chart"></canvas>
+    <!-- 使用 Flexbox 布局实现左右并排 -->
+    <div style="display: flex; width: 100%; margin-top: 20px;">
+        <div style="width: 70%;">
+            <canvas id="shipping_chart"></canvas>
+        </div>
+
+        <div style="width: 30%;" id="description">
+            <p>請選擇一個指數以顯示詳細解說。</p>
+        </div>
     </div>
 
-    <h2>文字雲</h2>
+    <h2 id="word-cloud">文字雲</h2>
     <form method='post' action="{{ url_for('update_data8') }}">
+        <P>透過蒐集 Reddit 上關於 Syntec、Siemens 和 Fanuc 的相關評論，可以深入了解潛在客戶的痛點和商機。</P>
         <p>
             <label for="query">Enter Query:</label>
             <input type="text" name="query" id="query">
@@ -295,8 +415,45 @@
     
     <!-- Initially hidden image element -->
     <img id="dynamicImage" style="display: none;" alt="文字雲">
-
-    <h2>金屬市場數據分析</h2>
+    <h2 id="metal-market">金屬市場數據分析</h2>
+    <h3>LME金屬價格波動對工具機市場的影響</h3>
+    <p>倫敦金屬交易所（LME）的金屬價格波動對工具機市場有直接影響，因為金屬是工具機製造的主要原材料。</p>
+    
+    <h4>金屬價格對工具機市場的影響</h4>
+    
+    <strong><h5>1. 生產成本</h5></strong>
+    <ul>
+        <li><strong>原材料成本增加：</strong>金屬價格上漲會直接增加工具機製造所需材料的採購成本，例如鋼鐵、鋁和銅等常用材料。</li>
+        <li><strong>影響：</strong>製造商可能需要提高產品售價以轉嫁成本，進而影響產品的市場競爭力。</li>
+        <li><strong>應對措施：</strong>製造商可能尋求替代材料或優化設計以減少金屬用量。</li>
+    </ul>
+    
+    <strong><h5>2. 市場需求波動</h5></strong>
+    <ul>
+        <li><strong>下游行業的敏感性：</strong>工具機被廣泛應用於汽車、航空航天、能源和重工業等行業。這些行業對金屬價格的波動極為敏感，因為金屬成本通常占其生產成本的很大比例。</li>
+        <li><strong>價格上漲影響：</strong>若金屬價格高企，這些行業可能推遲或縮減資本支出，進而降低對工具機的需求。</li>
+        <li><strong>價格下降影響：</strong>相反，金屬價格下降則可能刺激這些行業增加投資，帶動工具機市場需求上升。</li>
+    </ul>
+    
+    <strong><h5>3. 供應鏈管理的挑戰</h5></strong>
+    <ul>
+        <li><strong>成本預測與庫存管理：</strong>金屬價格的不穩定性給工具機製造商的供應鏈管理帶來挑戰，尤其是在長期訂單和項目中，金屬價格波動可能導致預算超支。</li>
+        <li><strong>影響：</strong>生產計劃可能被迫調整，甚至可能因成本過高而取消或延遲訂單。</li>
+        <li><strong>應對措施：</strong>製造商可能使用對沖策略（如期貨合約）來穩定成本，或者增加庫存以避免價格高漲時的原材料短缺。</li>
+    </ul>
+    
+    <h4>總結</h4>
+    <p>
+        金屬價格的波動對工具機市場的影響是多方面的：
+    </p>
+    <ul>
+        <li>從生產端來看，金屬價格上漲會增加工具機的製造成本，進而推升價格，影響競爭力。</li>
+        <li>從需求端來看，價格波動會影響工具機的下游行業投資規模，直接影響市場需求。</li>
+        <li>供應鏈管理方面，價格波動增加了企業在成本控制和計劃執行上的挑戰。</li>
+    </ul>
+    <p>
+        工具機製造商需密切關注金屬價格走勢，靈活調整策略，才能在波動的市場環境中保持競爭優勢。
+    </p>
     <form method='post' action={{ url_for('update_data9') }}>
         <p>
             <button type='submit'>更新資料</button>
@@ -362,7 +519,9 @@
             <canvas id="metalVolumeChart"></canvas>
         </div>
     </div>
-
+    <button id="backToTop" style="display:none; position:fixed; bottom:20px; right:20px; padding:10px 20px; font-size:14px; background-color:#007BFF; color:white; border:none; border-radius:5px; cursor:pointer;">
+        Back to Top
+    </button> 
     
 
     
@@ -1079,6 +1238,34 @@
                 drawChart(df7_value);  // Call drawChart on button click
             });
         });
+
+            // 定義每個指數的文字解說
+        const descriptions = {
+            "全球主幹航線綜合準班率指數": "<ol><li><strong>指數目標：</strong><p>衡量班輪服務品質，科學評估班輪公司及其聯盟的航班準班率，推動服務標準化，提升全球供應鏈管理效率。</p></li><li><strong>指數結構：</strong><ul><li>主幹航線準班率指數</li><li>班輪公司及聯盟準班率指數</li><li>港口班輪準班率指數</li></ul></li><li><strong>樣本範圍：</strong><ul><li><strong>航線：</strong> 涵蓋亞洲—歐洲、美洲、大洋洲、非洲等10條全球主幹航線。</li><li><strong>港口：</strong> 50個主要港口及489個常用港口（如上海、鹿特丹、洛杉磯）。</li><li><strong>班輪公司：</strong> 全球運力排名前13的公司及三大班輪聯盟（2M、Ocean、THE）。</li></ul></li><li><strong>數據來源：</strong><ul><li><strong>預計數據（ETA/ETB）：</strong> 由船公司提供。</li><li><strong>實際數據（ATA/ATB）：</strong> 基於AIS船舶實時運行數據。</li></ul></li><li><strong>計算模式：</strong><ul><li><strong>準班率：</strong> 偏差不超過24小時計為準班。<ul><li><strong>VO準班率：</strong> 基於班輪運營人（Vessel Operator）。</li><li><strong>SP準班率：</strong> 收發貨服務準班率，基於單港數據。</li><li><strong>PP準班率：</strong> 到離港服務準班率，基於港對港數據。</li></ul></li><li><strong>綜合準班率：</strong> SP與PP的算術平均值。</li><li><strong>港口服務水平：</strong> 港口準班率 × 掛靠密度 × 100。</li></ul></li><li><strong>時間指標：</strong><ul><li><strong>在港時間：</strong> 從港口等待區域到離開泊位的總時長。</li><li><strong>靠泊時間：</strong> 從泊位靠泊到離開泊位的總時長。</li></ul></li><li><strong>發布形式：</strong><ul><li><strong>頻率：</strong> 每月上旬發布上月數據。</li><li><strong>內容：</strong> 包括主幹航線準班率、班輪公司及聯盟準班率、港口準班率等多項指標。</li></ul></li></ol><p><strong>意義：</strong> GCSP指數為航運、貿易與物流企業提供標準化的服務品質評估工具，助力供應鏈管理與市場決策。</p>",
+            "全球主幹航線收發貨準班率指數": "採用單港維度，基於10條樣本航線和50個基本港口數據，將船舶實際靠泊前15日班輪公司對外公布的ETB與ATB作對比，偏差不超過24小時計為收發貨服務準班。收發貨準班率是指收發貨服務準班次數佔總班次的比例，簡稱SP準班率。",
+            "全球主幹航線到離港準班率指數": "用港對港配對形式，基於10條樣本航線和500多個常用港口數據，將船舶從啟運港離泊時班輪公司對外公佈的ETB與ATB作對比，偏差不超過24小時計為到離港服務準班。到離港準班率是指到離港服務準班次數占總班次的比例，簡稱PP準班率。",
+            "港口班輪準確率:準班率": "採用單港維度，基於10條樣本航線所涉及的區域之間航線和489個常用港口數據，將船舶實際靠泊前15日班輪公司公佈的ETB與ATB作比較，偏差不超過24小時計為港口班輪準班。港口班輪準班率是指班輪準班次數占港口總班次的比例。",
+            "港口班輪準確率:掛靠數": "採用單港維度，基於10條樣本航線所涉及的區域之間航線，對樣本港口掛靠次數進行統計。同一港口內多次移泊計作一次靠泊。",
+            "港口班輪準確率:班期综合服务水平": "指港口班輪準班率與掛靠密度的乘積，再乘以100。掛靠密度 = 港口掛靠數 / 50個樣本港口總掛靠數。",
+            "港口班輪準確率:在港时间(天)": "船舶抵達港口等待區域/引水站（根據GVVMC的AIS數據）至船舶離開泊位之間的總時長。",
+            "港口班輪準確率:在泊時間(天)": "船舶抵達泊位（根據GVVMC的AIS數據）至船舶離開泊位之間的總時長。",
+            "一帶一路航貿指數": "<ol><li><strong>指數目標：</strong><p>反映“一帶一路”在貿易與交通運輸方面的發展成果，提供決策參考。</p></li><li><strong>主要構成：</strong><ul><li><strong>“一帶一路”貿易額指數：</strong> 包括綜合指數與8個成分指數，涵蓋66個國家。</li><li><strong>“一帶一路”集裝箱海運量指數：</strong> 包括綜合指數、進出口成分指數及細分地區指數。</li><li><strong>“海上絲綢之路”運價指數：</strong> 包括綜合指數、出口運價、進口運價、乾散貨運價及原油運價指數。</li></ul></li><li><strong>數據基礎：</strong><ul><li><strong>基期：</strong> 2015年1月，基期指數為100點。</li><li><strong>數據來源：</strong> 上海航運交易所及其相關指數數據（如CCFI、CICFI）。</li></ul></li><li><strong>指數計算方式：</strong><p>公式：<code>100 × 當期數據 ÷ 基期數據</code>，通過加權統計生成綜合指數。</p></li><li><strong>發布時間：</strong><p>每月最後一週的星期三，節假日順延。</p></li><li><strong>意義：</strong><p>為貿易與運輸市場提供準確、量化的參考，展示“一帶一路”建設的成效，助力政策制定與市場規劃。</p></li></ol>",
+            "一帶一路貿易額指數": "<p><strong>分區域指數計算方式：</strong> <code>100 × 當期數據 ÷ 基期數據</code></p><p><strong>綜合指數：</strong> 通過分區域指數加權統計計算。</p><hr><h2>指標與覆蓋範圍</h2><table border='1' cellpadding='8' cellspacing='0'><thead><tr><th>指標</th><th>指標範圍</th></tr></thead><tbody><tr><td><strong>蒙俄</strong></td><td>蒙古、俄羅斯聯邦等2國</td></tr><tr><td><strong>中亞</strong></td><td>哈薩克斯坦、吉爾吉斯斯坦、塔吉克斯坦、烏茲別克斯坦、土庫曼斯坦等5國</td></tr><tr><td><strong>南亞</strong></td><td>印度、巴基斯坦、孟加拉國、阿富汗、尼泊爾聯邦民主共和國、不丹、斯里蘭卡、馬爾代夫等8國</td></tr><tr><td><strong>東南亞</strong></td><td>越南、老撾、柬埔寨、泰國、馬來西亞、新加坡、印度尼西亞、汶萊、菲律賓、緬甸、東帝汶等11國</td></tr><tr><td><strong>西亞</strong></td><td>土耳其、伊朗、敘利亞、伊拉克、阿聯酋、沙特阿拉伯、卡塔爾、巴林、科威特、黎巴嫩、阿曼、也門、約旦、以色列、巴勒斯坦、格魯吉亞、亞美尼亞、阿塞拜疆等18國</td></tr><tr><td><strong>北非</strong></td><td>埃及等1國</td></tr><tr><td><strong>歐洲</strong></td><td>波蘭、捷克、斯洛伐克、匈牙利、愛沙尼亞、拉脫維亞、立陶宛、白俄羅斯、烏克蘭、摩爾多瓦、塞爾維亞、黑山、克羅地亞、斯洛文尼亞、波黑、前南馬其頓、羅馬尼亞、保加利亞、阿爾巴尼亞等19國</td></tr><tr><td><strong>大洋洲</strong></td><td>澳大利亞、新西蘭等2國</td></tr></tbody></table>",
+            "集裝箱海運量指數": "<p><strong>分區域指數計算方式：</strong> <code>100 × 當期數據 ÷ 基期數據</code></p><p><strong>綜合指數：</strong> 通過分區域指數加權統計計算。</p><hr><h2>指標與覆蓋範圍</h2><table border='1' cellpadding='8' cellspacing='0'><thead><tr><th>指標</th><th>指標範圍</th></tr></thead><tbody><tr><td><strong>蒙俄</strong></td><td>蒙古、俄羅斯聯邦等2國</td></tr><tr><td><strong>中亞</strong></td><td>哈薩克斯坦、吉爾吉斯斯坦、塔吉克斯坦、烏茲別克斯坦、土庫曼斯坦等5國</td></tr><tr><td><strong>東南亞</strong></td><td>越南、老撾、柬埔寨、泰國、馬來西亞、新加坡、印度尼西亞、汶萊、菲律賓、緬甸、東帝汶等11國</td></tr><tr><td><strong>歐洲</strong></td><td>英國、愛爾蘭、荷蘭、比利時、盧森堡、法國、摩納哥、冰島、法羅群島、丹麥、挪威、瑞典、芬蘭、波蘭、捷克、斯洛伐克、匈牙利、德國、奧地利、瑞士、列支敦士登、愛沙尼亞、拉脫維亞、立陶宛、白俄羅斯、烏克蘭、摩爾多瓦、塞爾維亞、黑山、克羅地亞、斯洛文尼亞、波黑、馬其頓、羅馬尼亞、保加利亞、阿爾巴尼亞、希臘、意大利、梵蒂岡、聖馬力諾、馬耳他、西班牙、葡萄牙、安道爾等44國</td></tr></tbody></table>",
+            "海上絲綢之路運價指數": "<p><strong>分區域指數計算方式：</strong><code>100 × 當期數據 ÷ 基期數據</code></p><p><strong>綜合指數：</strong> 通過分區域指數加權統計計算。</p><hr><h2>指標與覆蓋範圍</h2><table border='1' cellpadding='8' cellspacing='0'><thead><tr><th>地區</th><th>指標範圍</th></tr></thead><tbody><tr><td><strong>俄遠東</strong></td><td>俄羅斯海參崴、東方港等2港</td></tr><tr><td><strong>南亞</strong></td><td>印度、巴基斯坦、孟加拉國、阿富汗、尼泊爾聯邦民主共和國、不丹、斯里蘭卡、馬爾代夫等8國</td></tr><tr><td><strong>東南亞</strong></td><td>越南、老撾、柬埔寨、泰國、馬來西亞、新加坡、印度尼西亞、汶萊、菲律賓、緬甸、東帝汶等11國</td></tr><tr><td><strong>西亞</strong></td><td>土耳其、伊朗、敘利亞、伊拉克、阿聯酋、沙特阿拉伯、卡塔爾、巴林、科威特、黎巴嫩、阿曼、也門、約旦、以色列、巴勒斯坦、格魯吉亞、亞美尼亞、阿塞拜疆等18國</td></tr><tr><td><strong>歐洲</strong></td><td>英國、愛爾蘭、荷蘭、比利時、盧森堡、法國、摩納哥、冰島、法羅群島、丹麥、挪威、瑞典、芬蘭、波蘭、捷克、斯洛伐克、匈牙利、德國、奧地利、瑞士、列支敦士登、愛沙尼亞、拉脫維亞、立陶宛、白俄羅斯、烏克蘭、摩爾多瓦、塞爾維亞、黑山、克羅地亞、斯洛文尼亞、波黑、馬其頓、羅馬尼亞、保加利亞、阿爾巴尼亞、希臘、意大利、梵蒂岡、聖馬力諾、馬耳他、西班牙、葡萄牙、安道爾等44國，以及俄羅斯聖彼得堡、新羅西斯克等2港</td></tr><tr><td><strong>大洋洲</strong></td><td>澳大利亞、新西蘭等2國</td></tr><tr><td><strong>北非</strong></td><td>埃及等1國</td></tr></tbody></table>"
+        };
+
+    // 監聽按鈕點擊事件
+    document.querySelectorAll('.btn-group .btn').forEach(button => {
+        button.addEventListener('click', () => {
+            // 獲取按鈕的指數名稱
+            const indexName = JSON.parse(button.getAttribute('name')).index;
+
+            // 更新解說區內容
+            const descriptionDiv = document.getElementById('description');
+            descriptionDiv.innerHTML = `<p>${descriptions[indexName]}</p>`;
+        });
+    });
     </script>
     
     <script>
@@ -1561,7 +1748,29 @@
 
 
 </script>
- 
+
+<script>
+    // 取得按鈕
+    const backToTopButton = document.getElementById("backToTop");
+
+    // 當滾動時觸發
+    window.addEventListener("scroll", () => {
+        if (window.scrollY > 200) { // 當滾動超過 200px 時顯示按鈕
+            backToTopButton.style.display = "block";
+        } else {
+            backToTopButton.style.display = "none";
+        }
+    });
+
+    // 點擊按鈕時滑動回頂部
+    backToTopButton.addEventListener("click", () => {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth" // 平滑滾動
+        });
+    });
+</script>
+
 </body>
 
 </html>
