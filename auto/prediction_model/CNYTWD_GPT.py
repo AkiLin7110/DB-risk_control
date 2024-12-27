@@ -9,7 +9,7 @@ from keras.layers import Dense, LSTM, GRU
 from keras.optimizers import Adam, SGD
 
 # Import and setup
-BATCH_SIZE = 90
+BATCH_SIZE = 2500
 PREVIOUS = 60
 PREDICT = 20
 
@@ -71,6 +71,13 @@ def build_model(model_type, optimizer):
     model.compile(optimizer=optimizer, loss='mean_squared_error')
     return model
 
+# Function to calculate accuracy
+def calculate_direction_accuracy(y_true, y_pred):
+    true_directions = np.sign(np.diff(y_true.flatten()))
+    pred_directions = np.sign(np.diff(y_pred.flatten()))
+    correct = np.sum(true_directions == pred_directions)
+    return correct / len(true_directions) * 100
+
 # Initialize Comet experiment
 experiment = Experiment(
     api_key="0UMQ6h20m4Jv5QIHCPPuHkvp7",  # Replace with your Comet API key
@@ -92,7 +99,7 @@ history_lstm_nag = model_lstm_nag.fit(
     x_train, y_train,
     validation_data=(x_val, y_val),
     batch_size=BATCH_SIZE,
-    epochs=100,
+    epochs=1000,
     verbose=1
 )
 
@@ -100,6 +107,11 @@ history_lstm_nag = model_lstm_nag.fit(
 experiment.set_name("LSTM-NAG")
 experiment.log_metric("final_train_loss", history_lstm_nag.history['loss'][-1])
 experiment.log_metric("final_val_loss", history_lstm_nag.history['val_loss'][-1])
+
+# Calculate and log direction accuracy
+pred_lstm_nag = model_lstm_nag.predict(x_test)
+accuracy_lstm_nag = calculate_direction_accuracy(scaler.inverse_transform(y_test.reshape(-1, 1)), scaler.inverse_transform(pred_lstm_nag))
+experiment.log_metric("direction_accuracy", accuracy_lstm_nag)
 
 # Plot and log LSTM-NAG loss curve
 plt.figure()
@@ -110,36 +122,41 @@ plt.title("LSTM-NAG Loss")
 plt.savefig("lstm_nag_loss.png")
 experiment.log_image("lstm_nag_loss.png")
 
-# Train LSTM-GAN model
-params = {"layer1": 259, "layer2": 410, "layer3": 473, "epochs": 7}
-model_lstm_gan = Sequential()
-model_lstm_gan.add(LSTM(params['layer1'], activation='relu', return_sequences=True, input_shape=(x_train.shape[1], 1)))
-model_lstm_gan.add(LSTM(params['layer2'], activation='relu', return_sequences=True))
-model_lstm_gan.add(LSTM(params['layer3'], activation='relu', return_sequences=False))
-model_lstm_gan.add(Dense(1))
-model_lstm_gan.compile(optimizer='adam', loss='mse')
+# # Train LSTM-GAN model
+# params = {"layer1": 259, "layer2": 410, "layer3": 473, "epochs": 7}
+# model_lstm_gan = Sequential()
+# model_lstm_gan.add(LSTM(params['layer1'], activation='relu', return_sequences=True, input_shape=(x_train.shape[1], 1)))
+# model_lstm_gan.add(LSTM(params['layer2'], activation='relu', return_sequences=True))
+# model_lstm_gan.add(LSTM(params['layer3'], activation='relu', return_sequences=False))
+# model_lstm_gan.add(Dense(1))
+# model_lstm_gan.compile(optimizer='adam', loss='mse')
 
-history_lstm_gan = model_lstm_gan.fit(
-    x_train, y_train,
-    validation_data=(x_val, y_val),
-    batch_size=128,
-    epochs=params['epochs'],
-    verbose=1
-)
+# history_lstm_gan = model_lstm_gan.fit(
+#     x_train, y_train,
+#     validation_data=(x_val, y_val),
+#     batch_size=128,
+#     epochs=params['epochs'],
+#     verbose=1
+# )
 
-# Log LSTM-GAN metrics
-experiment.set_name("LSTM-GAN")
-experiment.log_metric("final_train_loss", history_lstm_gan.history['loss'][-1])
-experiment.log_metric("final_val_loss", history_lstm_gan.history['val_loss'][-1])
+# # Log LSTM-GAN metrics
+# experiment.set_name("LSTM-GAN")
+# experiment.log_metric("final_train_loss", history_lstm_gan.history['loss'][-1])
+# experiment.log_metric("final_val_loss", history_lstm_gan.history['val_loss'][-1])
 
-# Plot and log LSTM-GAN loss curve
-plt.figure()
-plt.plot(history_lstm_gan.history['loss'], label="Train Loss")
-plt.plot(history_lstm_gan.history['val_loss'], label="Validation Loss")
-plt.legend()
-plt.title("LSTM-GAN Loss")
-plt.savefig("lstm_gan_loss.png")
-experiment.log_image("lstm_gan_loss.png")
+# # Calculate and log direction accuracy
+# pred_lstm_gan = model_lstm_gan.predict(x_test)
+# accuracy_lstm_gan = calculate_direction_accuracy(scaler.inverse_transform(y_test.reshape(-1, 1)), scaler.inverse_transform(pred_lstm_gan))
+# experiment.log_metric("direction_accuracy", accuracy_lstm_gan)
+
+# # Plot and log LSTM-GAN loss curve
+# plt.figure()
+# plt.plot(history_lstm_gan.history['loss'], label="Train Loss")
+# plt.plot(history_lstm_gan.history['val_loss'], label="Validation Loss")
+# plt.legend()
+# plt.title("LSTM-GAN Loss")
+# plt.savefig("lstm_gan_loss.png")
+# experiment.log_image("lstm_gan_loss.png")
 
 # End Comet experiment
 experiment.end()

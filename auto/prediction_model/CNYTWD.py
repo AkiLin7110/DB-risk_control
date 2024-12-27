@@ -20,6 +20,17 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM, GRU
 from keras.optimizers import Adam, SGD
 
+import random
+import numpy as np
+import tensorflow as tf
+
+# 固定隨機種子
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
+
 # 讀檔案
 df = pd.read_excel('./FX_CNY_FR.xlsx')
 data = df.filter(['即期買入'])
@@ -27,7 +38,7 @@ dataset = data.values
 
 BATCH_SIZE = 90
 PREVIOUS = 60
-PREDICT = 20
+PREDICT = 15
 
 # Split the dataset into training, validation, and test sets
 training_data_len = int(np.ceil(len(dataset) * 0.70))
@@ -81,6 +92,7 @@ x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
 x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
 
 print("Data preparation completed.")
+
 
 
 '''Model1: LSTM-NAG'''
@@ -202,7 +214,7 @@ class LSTMMonteCarloPredictor:
         # model.add(Bidirectional(LSTM(params['layer3'], activation='relu',
         #                            return_sequences=False)))
         model.add(Dense(1))
-        model.compile(optimizer='adam', loss='mse')
+        model.compile(optimizer='adam', loss='mean_squared_error')
         self.model = model
 
     def monte_carlo_simulation(self, last_price, n_days, volatility, n_sims=None):
@@ -279,7 +291,7 @@ params = {
     'layer1': 259,
     'layer2': 410,
     'layer3': 473,
-    'epochs': 7
+    'epochs': 100
 }
 
 # 建立並訓練模型
@@ -288,8 +300,8 @@ history = predictor.model.fit(
     X_train_reshaped, 
     y_train,
     epochs=params['epochs'],
-    batch_size = 128,
-    validation_split = 0.2,
+    batch_size = BATCH_SIZE,
+    # validation_split = 0.2,
     verbose = 1
 )
 
@@ -315,3 +327,11 @@ print(f"LSTM-NAG Direction Accuracy: {lstm_nag_acc:.2f}%")
 
 lstm_nag_acc, lstm_nag_metrics = calculate_direction_accuracy(y_true, test_pred)
 print(f"LSTM-GAN Direction Accuracy: {lstm_nag_acc:.2f}%")
+
+# 儲存 LSTM-NAG 模型
+model_lstm_nag.save("lstm_nag_model.h5")
+print("LSTM-NAG 模型已儲存為 lstm_nag_model.h5")
+
+# 儲存 LSTM-GAN 模型
+predictor.model.save("lstm_gan_model.h5")
+print("LSTM-GAN 模型已儲存為 lstm_gan_model.h5")

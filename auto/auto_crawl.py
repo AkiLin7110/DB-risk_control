@@ -76,13 +76,13 @@ def get_data1(filepath:str, data_type:str):
     payload = {'pStartyear': '92',
         'pEndyer': '113',
         'pStartmonth': '1',
-        'pEndmonth': '1',
+        'pEndmonth': '12',
         'pGtNote': '',
         'pColSeq': '進出口別 / 日期 / 貨品別 / 國家(地區)別',
         'pCnyList': '中國大陸',
         'minYear': '92',
         'maxYear': '113',
-        'maxMonth': '8',
+        'maxMonth': '12',
         'minMonth': '1',
         'maxYearByYear': '113',
         'searchInfo.TypePort': TypePort,
@@ -90,7 +90,7 @@ def get_data1(filepath:str, data_type:str):
         'searchInfo.StartYear': '92',
         'searchInfo.StartMonth': '1',
         'searchInfo.EndYear': '113',
-        'searchInfo.EndMonth': '1',
+        'searchInfo.EndMonth': '12',
         'searchInfo.goodsName': '21',
         'searchInfo.goodsType': '2',
         'searchInfo.goodsCodeGroup': '8207602000',
@@ -871,7 +871,7 @@ def get_data_12():
     driver = uc.Chrome()
     driver.get(url)
     time.sleep(5)
-    data = driver.find_elements(By.XPATH,'//*[@id="ccApp"]/div/div[2]/div[1]/div/div/div[2]/div[4]/ul')[0].text.split()
+    data = driver.find_elements(By.XPATH,'//*[@id="ccApp"]/div/div[2]/div[1]/div/div/div[2]/div[3]/ul')[0].text.split()
     df = {
         '幣別':[],
         '最新公告時間':[],

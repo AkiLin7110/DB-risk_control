@@ -10,6 +10,7 @@ from Forex_dashboard.cnyesnews_drawer import FX_corr_overtime
 import arrow
 from dash import Dash, dcc, html
 import plotly.express as px
+from upload_sql import upload_to_sql
 
 app = Flask(__name__)
 FILE_SOURCE  = "auto/new_data"
@@ -30,9 +31,45 @@ def text():
 @app.route('/home')
 def home():
     fig1, fig2 = FX_corr_overtime()
-    fig1_html = fig1.to_html(full_html=False)
-    fig2_html = fig2.to_html(full_html=False)
+    fig1_html = fig1.to_html(full_html = False)
+    fig2_html = fig2.to_html(full_html = False)
     return render_template('home.html', fig1_html=fig1_html, fig2_html=fig2_html)
+
+@app.route('/update_all', methods=['GET', 'POST'])
+def update_all():
+    update_data0_1()
+    update_data1()
+    update_data2()
+    update_data3()
+    update_data4()
+    update_data5()
+    update_data6()
+    update_data7()
+    update_data8()
+    update_data9()
+    update_data10()
+    update_data12()
+    update_data13()
+    update_data14()
+    message = '更新所有資料'
+    return render_template('update_home.html', message = message)
+
+@app.route('/upload_SQLdb', methods=['GET', 'POST'])
+def upload_SQLdb():
+    # === 步驟 1: 讀取 Excel 檔案 ===
+    file_path = "auto/data"
+    file_list = os.listdir(f'auto/data')
+    # print(file_list)
+
+    for tmp_file in file_list:
+        # print(tmp_file)
+        tmp = tmp_file.split('.')
+        file_name = tmp[0]
+        file_type = tmp[1]
+        upload_to_sql(file_path, file_name, file_type)
+
+    message = '成功上傳至MySQL:'
+    return render_template('update_home.html', message = message)
 
 
 # @app.route('/loginurl', methods=['GET', 'POST'])
@@ -139,6 +176,7 @@ def government():
 
 @app.route('/update/get_data0_1', methods=['GET', 'POST'])
 def update_data0_1():
+    print('update_data0_1')
     # update_date = (request.form.get('month'))
     # parsed_date = arrow.get(update_date, "YYYY-MM")
 
@@ -158,6 +196,7 @@ def update_data0_1():
 
 @app.route('/update/get_data1', methods=['GET', 'POST'])
 def update_data1():
+    print('update_data1')
     GEO = '中國大陸'
     file_name = f'1_{GEO}_進出口總值(美元).xlsx'
     move_file(FILE_DESTINATION, FILE_PREVIOUS, file_name)
@@ -187,6 +226,7 @@ def update_data1():
 
 @app.route('/update/get_data2', methods=['POST'])
 def update_data2():
+    print('update_data2')
     # 欲更新檔案
     file_name = '2_google_trends.json'
 
@@ -240,6 +280,7 @@ def update_data2():
 
 @app.route('/update/get_data3', methods=['GET', 'POST'])
 def update_data3():
+    print('update_data3')
     file_name = '3_主要國家工業生產增加率.xlsx'
     lastet_month = '11308'
 
@@ -268,6 +309,7 @@ def update_data3():
 
 @app.route('/update/get_data4', methods=['GET', 'POST'])
 def update_data4():
+    print('update_data4')
     file_name = '4_政府推動計畫名單.xlsx'
     df = get_data4()
     df.to_excel(f'{FILE_SOURCE}/4_政府推動計畫名單.xlsx', index = 0)
@@ -300,6 +342,7 @@ def update_data4():
 
 @app.route('/update/get_data5', methods=['GET', 'POST'])
 def update_data5():
+    print('update_data5')
     file_name_0 = '5_經濟數據'
     updated = request.form.get('updated_item')  # Retrieve updated_item from the form
     # updated = 'all'
@@ -371,6 +414,7 @@ def update_data5():
 
 @app.route('/update/get_data7', methods=['GET', 'POST'])
 def update_data7():
+    print('update_data7')
     filepath = 'auto/new_data/'
 
     df1, df2 = get_data7_1()
@@ -515,11 +559,12 @@ def update_data7():
 
 @app.route('/update/get_data8', methods=['GET', 'POST'])
 def update_data8():
+    print('update_data8')
     # Retrieve the query from the form submission
     # querys = request.form.get('query', 'fanuc')  # Default to 'fanuc' if no query provided
     querys = ""
     if querys == "":
-        querys = ['syntec','fanuc','siemens']
+        querys = ['syntec']
     forums = ['Machinists', 'robotics']
     
     # Call functions with the dynamic query
@@ -561,7 +606,7 @@ def update_data8():
 
 @app.route('/update/get_data9', methods=['GET', 'POST'])
 def update_data9():
-
+    print('update_data9')
     # 9_1: 交易價格
     get_data9_1()
     file_name = '9_1原料價格.json'
@@ -721,6 +766,7 @@ def economic_analysis():
 
 @app.route('/update/get_data6', methods=['GET', 'POST'])
 def update_data6():
+    print('update_data6')
     # 更新資料
     get_data6()
     file_name = '6_IMD競爭力指標.json'
@@ -776,7 +822,7 @@ def update_data6():
 
 @app.route('/update/get_data10', methods=['GET', 'POST'])
 def update_data10():
-
+    print('update_data10')
     df = get_data_10()
     file_name_0 = '10_機場吞吐量'
     df.to_excel(f'{FILE_SOURCE}/{file_name_0}.xlsx')
@@ -812,6 +858,7 @@ def update_data10():
 
 @app.route('/update/get_data12', methods=['GET', 'POST'])
 def update_data12():
+    print('update_data12')
     df = get_data_12()
     file_name_0 = '12_SWIFT各幣別支付占比'
     df.to_excel(f'{FILE_SOURCE}/{file_name_0}.xlsx')
@@ -848,6 +895,7 @@ def update_data12():
 
 @app.route('/update/get_data13', methods=['GET', 'POST'])
 def update_data13():
+    print('update_data13')
     querys = ['stocks','currencies', 'commodities', 'crypto', 'bonds']
     for query in querys:
         get_data13(query)
@@ -857,6 +905,7 @@ def update_data13():
 
 @app.route('/update/get_data14', methods=['GET', 'POST'])
 def update_data14():
+    print('update_data14')
     get_data14()
     file_name = '14_中國汽車銷量'
     data = pd.read_excel(f'{FILE_SOURCE}/{file_name}.xlsx', index_col = 0)

@@ -130,6 +130,14 @@
                 <form method="post" action="{{ url_for('government') }}">
                     <button type="submit">政府補助</button>
                 </form>
+
+                <form method="post" action="{{ url_for('update_all') }}">
+                  <button type="submit">更新全部資料</button>
+                </form>
+
+                <form method="post" action="{{ url_for('upload_SQLdb') }}">
+                  <button type="submit">將Local上傳至MySQL</button>
+                </form>
             </div>
             
 
@@ -149,7 +157,7 @@
       </div>
       <h2> CNY/TWD </h2>
       <h3> 採用模型: LSTM-NAG, Loss: Mean-squared Error(MSE)</h3>
-      
+
       <h2> TWD/YEN </h2>
       <h2> USD/TWD </h2>
       <h3>貨幣相關係數</h3>
