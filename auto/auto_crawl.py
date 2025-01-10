@@ -1027,6 +1027,175 @@ def get_data14():
     df = pd.DataFrame(data, columns=["时间", "销量", "同比"]).drop_duplicates().sort_values('时间', ignore_index = True)
     df.to_excel(f'{FILE_SOURCE}/14_中國汽車銷量.xlsx')
 
+def get_data15_0(year, month, data_type):
+    # otc: 上櫃, sii: 上市, web: 興櫃
+    data_dict = {
+    "供應鏈分類": {
+        "軸承與齒輪": ["鈞興KY", "健樁", "羅昇", "上銀", "台灣精銳"],
+        "線性滑軌": ["上銀", "直得", "全球傳動"],
+        "元件": ["亞德客KY", "上銀", "氣立"],
+        "控制器": ["新漢", "和樁", "盟立", "新代"],
+        "可程式邏輯控制器（PLC）": ["台達電", "艾訊", "泓格"],
+        "編碼器": ["大銀微", "羅昇", "直得", "台達電"],
+        "工控系統": ["大銀微系統", "羅昇", "樺漢", "盟立", "研華", "新漢", "佳市達", "威強電", "瑞傳", "振樺電"],
+        "電源模組": ["台達電", "時碩工業", "正威"]
+    },
+    "重點技術領域": {
+        "機器視覺（軟體）": ["所羅門", "亞光", "聰泰", "慧友", "佳能", "宸曜", "凌華", "鈺創", "昆盈"],
+        "距離感測器（機器人最貴零件）": ["恒達"],
+        "滾珠螺旋": ["亞德客KY", "上銀", "全球傳動", "台達電", "直得"],
+        "馬達": ["大銀微系統", "東元", "大同", "士電"],
+        "減速器": ["台灣精銳", "宇隆", "鈞興", "上銀", "羅昇", "盟英", "盟立"],
+        "機器人搭配工具機": ["亞德客", "氣立", "上銀", "大銀微", "直得", "全球傳動", "台灣精銳", "鈞興", "羅昇"]
+    }
+    }
+
+    # Flatten all values under '供應鏈分類'
+    all_supply_chain_companies = [company for companies in data_dict["供應鏈分類"].values() for company in companies]
+
+    # Flatten all values under '重點技術領域'
+    all_tech_field_companies = [company for companies in data_dict["重點技術領域"].values() for company in companies]
+
+    all_related_companies = all_supply_chain_companies + all_tech_field_companies
+
+
+    # 假如是西元，轉成民國
+    if year > 1990:
+        year -= 1911
+
+    url = 'https://mops.twse.com.tw/nas/t21/'+str(data_type)+'/t21sc03_'+str(year)+'_'+str(month)+'_0.html'
+    if year <= 98:
+        url = 'https://mops.twse.com.tw/nas/t21/'+str(data_type)+'/t21sc03_'+str(year)+'_'+str(month)+'.html'
+
+    # 偽瀏覽器
+    headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
+
+    # 下載該年月的網站，並用pandas轉換成 dataframe
+    response = requests.get(url, headers=headers)
+    response.encoding = 'big5'
+
+    # 解析 HTML
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # 找到表格
+    tables = soup.find_all('table')[0].find_all('table')
+    tables = [tables[i] for i in range(0,len(tables)) if i%2 == 0]
+
+    DF = pd.DataFrame()
+    for i in range(0,len(tables)-2):
+        try:
+            df = []
+            table_len = len(tables[i].find_all('tr'))
+            tmp = tables[i].find_all('tr')[0].text
+            sector = re.search(r"產業別：(.*)單位：千元", tmp).group(1)
+
+            cells = tables[i].find_all('tr')[3].find_all(['th'])
+            columns = ([cell.get_text(strip=True).replace('\n', '') for cell in cells])
+            
+            for j in range(4,table_len-1):
+                cells = tables[i].find_all('tr')[j].find_all(['td'])
+                data = ([cell.get_text(strip=True).replace('\n', '') for cell in cells])
+                if len(data) <= len(columns)+5:
+                    df.append(data)
+            try:
+                df = pd.DataFrame(df, columns = columns)
+            except:
+                columns.append('備註')
+                df = pd.DataFrame(df, columns = columns)
+            df['產業別'] = sector
+
+            col = df.pop('產業別')  # 移除「產業別」欄位並保存
+            df.insert(0, '產業別', col)  # 將「產業別」插入到第一列
+        except Exception as error:
+            print(error)
+        if isinstance(df, pd.DataFrame):
+            DF = pd.concat([DF, df])
+    DF['相關公司'] = DF['公司名稱'].apply(lambda x: 'YES' if x in all_related_companies else 'NO')
+    if data_type == 'otc':
+        DF['掛牌市場類別'] = '上櫃'
+    elif data_type == 'sii':
+        DF['掛牌市場類別'] = '上市'
+    else:
+        DF['掛牌市場類別'] = '興櫃'
+    time.sleep(3)
+    return DF
+
+def get_data15_1(year, month, data_type):
+    data_dict = {
+    "供應鏈分類": {
+        "軸承與齒輪": ["鈞興KY", "健樁", "羅昇", "上銀", "台灣精銳"],
+        "線性滑軌": ["上銀", "直得", "全球傳動"],
+        "元件": ["亞德客KY", "上銀", "氣立"],
+        "控制器": ["新漢", "和樁", "盟立", "新代"],
+        "可程式邏輯控制器（PLC）": ["台達電", "艾訊", "泓格"],
+        "編碼器": ["大銀微", "羅昇", "直得", "台達電"],
+        "工控系統": ["大銀微系統", "羅昇", "樺漢", "盟立", "研華", "新漢", "佳市達", "威強電", "瑞傳", "振樺電"],
+        "電源模組": ["台達電", "時碩工業", "正威"]
+    },
+    "重點技術領域": {
+        "機器視覺（軟體）": ["所羅門", "亞光", "聰泰", "慧友", "佳能", "宸曜", "凌華", "鈺創", "昆盈"],
+        "距離感測器（機器人最貴零件）": ["恒達"],
+        "滾珠螺旋": ["亞德客KY", "上銀", "全球傳動", "台達電", "直得"],
+        "馬達": ["大銀微系統", "東元", "大同", "士電"],
+        "減速器": ["台灣精銳", "宇隆", "鈞興", "上銀", "羅昇", "盟英", "盟立"],
+        "機器人搭配工具機": ["亞德客", "氣立", "上銀", "大銀微", "直得", "全球傳動", "台灣精銳", "鈞興", "羅昇"]
+    }
+    }
+
+    # Flatten all values under '供應鏈分類'
+    all_supply_chain_companies = [company for companies in data_dict["供應鏈分類"].values() for company in companies]
+
+    # Flatten all values under '重點技術領域'
+    all_tech_field_companies = [company for companies in data_dict["重點技術領域"].values() for company in companies]
+
+    all_related_companies = all_supply_chain_companies + all_tech_field_companies
+
+    options = Options() 
+    # options.add_argument('--headless=new')  # 啟動Headless 無頭
+    options.add_argument('--disable-gpu')
+    driver = webdriver.Chrome(options = options)
+    driver.maximize_window()
+    driver.get('https://mops.twse.com.tw/mops/web/t163sb06')
+    driver.maximize_window()
+
+    if data_type == 'sii':
+        data_type = 1
+    elif data_type == 'otc':
+        data_type = 2
+    else:
+        data_type = 3
+
+    data_type_net = driver.find_element(By.XPATH,f'//*[@id="TYPEK"]/option[{data_type}]')
+    data_type_net.click()
+
+    year_net = driver.find_element(By.XPATH,'//*[@id="year"]')
+    year_net.send_keys(str(year))
+
+    season_net = driver.find_element(By.XPATH, '//*[@id="season"]')
+    season_net.send_keys(str(month))
+
+    send_out = driver.find_element(By.XPATH, '/html/body/center/table/tbody/tr/td/div[4]/table/tbody/tr/td/div/table/tbody/tr/td[3]/div/div[3]/form/table/tbody/tr/td[4]/table/tbody/tr/td[2]/div/div/input')
+    send_out.click()
+
+    time.sleep(5)
+    data = driver.find_elements(By.XPATH,'//*[@id="div01"]/table[1]/tbody')
+
+    columns = [tmp.replace("\n","") for tmp in driver.find_element(By.XPATH,'//*[@id="div01"]/table[1]/tbody/tr[1]').text.split(' ')]
+
+    all_data = data[0].text.split('\n')
+    all_data = [tmp.split(' ')[0:7] for tmp in all_data if '公司代號' not in tmp and '%' not in tmp and ')' not in tmp]
+
+    DF = pd.DataFrame(all_data, columns = columns)
+    DF['相關公司'] = DF['公司名稱'].apply(lambda x: 'YES' if x in all_related_companies else 'NO')
+    if data_type == 2:
+        DF['掛牌市場類別'] = '上櫃'
+    elif data_type == 1:
+        DF['掛牌市場類別'] = '上市'
+    else:
+        DF['掛牌市場類別'] = '興櫃'
+    # DF.to_excel('test.xlsx')
+    return DF
+
 if __name__ == '__main__':
 
     # # 1: 進出口總值

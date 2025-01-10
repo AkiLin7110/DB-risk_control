@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Industry Analysis</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: row;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .sidebar {
+            width: 20%;
+            padding: 20px;
+            border-right: 1px solid #ccc;
+            background-color: #f8f8f8;
+        }
+        .content {
+            width: 80%;
+            padding: 20px;
+        }
+        .scrollable-container {
+            max-height: 300px; /* 最大高度限制 */
+            overflow-y: auto;  /* 垂直滾動條 */
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        table th {
+            background-color: #f2f2f2;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        form button {
+            margin-top: 10px;
+        }
+        select {
+            width: 100%;
+        }
+        canvas {
+            margin-top: 20px;
+            max-width: 100%;
+            height: auto;
+        }
+        .chart-container {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+        }
+    </style>
+    <!-- 引入 Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- 左側篩選欄位 -->
+    <div class="sidebar">
+        <h2>篩選公司</h2>
+        <form method="POST">
+            <label>公司名稱：</label>
+            <div class="scrollable-container">
+                {% for company in companies %}
+                <div>
+                    <input type="checkbox" id="company_{{ loop.index }}" name="selected_companies" value="{{ company }}" 
+                    {% if company in selected_companies %}checked{% endif %}>
+                    <label for="company_{{ loop.index }}">{{ company }}</label>
+                </div>
+                {% endfor %}
+            </div>
+            <!-- 將篩選按鈕放在外面 -->
+            <button type="submit" style="margin-top: 10px; width: 100%;">篩選</button>
+        </form>
+        <form method='post' action={{ url_for('update_data15_0') }}>
+            <p>
+            <button type='submit'>更新月營收資料</button>
+            </p>
+        </form>
+        <form method='post' action={{ url_for('update_data15_1') }}>
+            <p>
+            <button type='submit'>更新季度營益分析資料</button>
+            </p>
+        </form>
+    </div>
+    
+
+    <!-- 右側顯示結果 -->
+    <div class="content">
+        <h2>歷年營收</h2>
+        {% if filtered_table %}
+        <div class="scrollable-container">
+            {{ filtered_table|safe }}
+        </div>
+        {% else %}
+        <p>請選擇公司以查看歷年營收數據。</p>
+        {% endif %}
+
+        <!-- 月營收折線圖 -->
+        <div class="chart-container">
+            <h3>月營收折線圖</h3>
+            <canvas id="monthlyRevenueChart"></canvas>
+        </div>
+
+        <!-- YOY 折線圖 -->
+        <div class="chart-container">
+            <h3>YOY 年增率</h3>
+            <canvas id="yoyChart"></canvas>
+        </div>
+
+        <h2>營益分析</h2>
+        {% if filtered_table2 %}
+        <div class="scrollable-container">
+            {{ filtered_table2|safe }}
+        </div>
+        {% else %}
+        <p>請選擇公司以查看營益分析數據。</p>
+        {% endif %}
+        <div class="chart-container">
+            <h3> 毛利率(%)</h3>
+            <canvas id="quaterlyChart1"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3> 營業利益率(%)</h3>
+            <canvas id="quaterlyChart2"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3> 稅前純益率(%)</h3>
+            <canvas id="quaterlyChart3"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3> 稅後純益率(%)</h3>
+            <canvas id="quaterlyChart4"></canvas>
+        </div>
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
+    <script>
+        // 從後端獲取數據
+        const monthlyRevenueData = {{ monthly_revenue_data|tojson }};
+        const yoyData = {{ yoy_data|tojson }};
+        const quarterlydata = {{ quarterly_data|tojson }};
+
+        // Create a color map to store each company's color
+        const colorMap = {};
+
+        // 將數字格式的日期轉換為字符串格式 (YYYY-MM)
+        monthlyRevenueData.forEach(company => {
+            company.labels = company.labels.map(date => {
+                // 確保數字轉為字符串，然後格式化為 YYYY-MM
+                const dateStr = date.toString(); // 轉換為字符串
+                return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}`; // 使用 slice 格式化為 YYYY-MM
+            });
+        });
+
+        yoyData.forEach(company => {
+            company.labels = company.labels.map(date => {
+                // 確保數字轉為字符串，然後格式化為 YYYY-MM
+                const dateStr = date.toString(); // 轉換為字符串
+                return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}`; // 使用 slice 格式化為 YYYY-MM
+            });
+        });
+
+        // 處理日期格式
+        quarterlydata.forEach(company => {
+            company.labels = company.labels.map(date => {
+                const dateStr = date.toString();
+                const year = dateStr.slice(0, 4);
+                const month = parseInt(dateStr.slice(4, 6));
+                const quarter = Math.ceil(month / 3);
+                return `${year}-Q${quarter}`;
+            });
+        });
+        console.log('quarterlydata:',quarterlydata)
+
+
+        // 為每家公司的資料生成 dataset
+        const monthlyDatasets = monthlyRevenueData.map(data => ({
+            label: data.label, // 公司名稱
+            data: data.labels.map((label, index) => ({ x: label, y: parseFloat(data.values[index]) })), // x: 日期, y: 營收
+            borderColor: getCompanyColor(data.label),
+            fill: false, // 不填充區域
+            tension: 0.3 // 平滑曲線
+        }));
+
+        // 為每家公司的資料生成 dataset
+        const yoyDatasets = yoyData.map(data => ({
+            label: data.label, // 公司名稱
+            data: data.labels.map((label, index) => ({ x: label, y: parseFloat(data.values[index]) })), // x: 日期, y: 營收
+            borderColor: getCompanyColor(data.label),
+            fill: false, // 不填充區域
+            tension: 0.3 // 平滑曲線
+        }));
+
+
+        // Step 1: Get a unique list of x-axis values (e.g., all quarters or dates).
+        const allXValues = new Set();
+        quarterlydata.forEach(company => {
+            company.labels.forEach(label => {
+                allXValues.add(label);
+            });
+        });
+        const xAxisLabels = Array.from(allXValues).sort(); // Ensure they are sorted.
+
+        console.log('Unique X-axis Labels:', xAxisLabels);
+
+        // Step 2: Ensure each dataset aligns with the full list of x-axis values
+        const quarterlyDatasets1 = quarterlydata.map(data => ({
+            label: data.label,
+            data: xAxisLabels.map(x => {
+                const index = data.labels.indexOf(x);
+                return {
+                    x: x,
+                    y: index === -1 ? null : parseFloat(data.values1[index])
+                };
+            }),
+            borderColor: getCompanyColor(data.label),
+            fill: false,
+            tension: 0.3
+        }));
+
+        const quarterlyDatasets2 = quarterlydata.map(data => ({
+            label: data.label,
+            data: xAxisLabels.map(x => {
+                const index = data.labels.indexOf(x);
+                return {
+                    x: x,
+                    y: index === -1 ? null : parseFloat(data.values2[index])
+                };
+            }),
+            borderColor: getCompanyColor(data.label),
+            fill: false,
+            tension: 0.3
+        }));
+
+        const quarterlyDatasets3 = quarterlydata.map(data => ({
+            label: data.label,
+            data: xAxisLabels.map(x => {
+                const index = data.labels.indexOf(x);
+                return {
+                    x: x,
+                    y: index === -1 ? null : parseFloat(data.values3[index])
+                };
+            }),
+            borderColor: getCompanyColor(data.label),
+            fill: false,
+            tension: 0.3
+        }));
+
+        const quarterlyDatasets4 = quarterlydata.map(data => ({
+            label: data.label,
+            data: xAxisLabels.map(x => {
+                const index = data.labels.indexOf(x);
+                return {
+                    x: x,
+                    y: index === -1 ? null : parseFloat(data.values4[index])
+                };
+            }),
+            borderColor: getCompanyColor(data.label),
+            fill: false,
+            tension: 0.3
+        }));
+
+
+
+        // 繪製月營收折線圖
+        const ctx1 = document.getElementById('monthlyRevenueChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line', // 使用折線圖
+            data: {
+                datasets: monthlyDatasets // 使用生成的數據集
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top', // 圖例位置
+                    },
+                },
+                scales: {
+                    x: {
+                        type: 'time', // 將 x 軸設置為時間軸
+                        time: {
+                            unit: 'month', // 按月份顯示
+                            displayFormats: {
+                                month: 'yyyy-MM' // x 軸格式設置為 YYYY-MM
+                            },
+                            tooltipFormat: 'yyyy-MM', // 工具提示的格式
+                        },
+                        title: {
+                            display: true,
+                            text: '月份'
+                        },
+                        ticks: {
+                            autoSkip: true, // 自動跳過重疊的標籤
+                            maxRotation: 45, // 最大旋轉角度
+                            minRotation: 0 // 最小旋轉角度
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '營收 (單位：千元)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 繪製 YOY 年增率折線圖
+        const ctx2 = document.getElementById('yoyChart').getContext('2d');
+                new Chart(ctx2, {
+                    type: 'line', // 使用折線圖
+                data: {
+                    datasets: yoyDatasets // 使用生成的數據集
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top', // 圖例位置
+                        },
+                    },
+                    scales: {
+                        x: {
+                            type: 'time', // 將 x 軸設置為時間軸
+                            time: {
+                                unit: 'month', // 按月份顯示
+                                displayFormats: {
+                                    month: 'yyyy-MM' // x 軸格式設置為 YYYY-MM
+                                },
+                                tooltipFormat: 'yyyy-MM', // 工具提示的格式
+                            },
+                            title: {
+                                display: true,
+                                text: '月份'
+                            },
+                            ticks: {
+                                autoSkip: true, // 自動跳過重疊的標籤
+                                maxRotation: 45, // 最大旋轉角度
+                                minRotation: 0 // 最小旋轉角度
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '年增率 (單位: %)'
+                            }
+                        }
+                    }
+                }
+            });
+
+        // 繪製圖表
+        const ctx3 = document.getElementById('quaterlyChart1').getContext('2d');
+        new Chart(ctx3, {
+            type: 'line',
+            data: {
+                datasets: quarterlyDatasets1
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category', // 改為類別軸
+                        title: {
+                            display: true,
+                            text: '季度'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '毛利率(單位: %)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 繪製圖表
+        const ctx4 = document.getElementById('quaterlyChart2').getContext('2d');
+        new Chart(ctx4, {
+            type: 'line',
+            data: {
+                datasets: quarterlyDatasets2
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category', // 改為類別軸
+                        title: {
+                            display: true,
+                            text: '季度'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '營業利益率(單位: %)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 繪製圖表
+        const ctx5 = document.getElementById('quaterlyChart3').getContext('2d');
+        new Chart(ctx5, {
+            type: 'line',
+            data: {
+                datasets: quarterlyDatasets3
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category', // 改為類別軸
+                        title: {
+                            display: true,
+                            text: '季度'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '稅前純益率(單位: %)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 繪製圖表
+        const ctx6 = document.getElementById('quaterlyChart4').getContext('2d');
+        new Chart(ctx6, {
+            type: 'line',
+            data: {
+                datasets: quarterlyDatasets4
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category', // 改為類別軸
+                        title: {
+                            display: true,
+                            text: '季度'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 45,
+                            minRotation: 0
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: '稅前純益率(單位: %)'
+                        }
+                    }
+                }
+            }
+        });
+
+    
+        // 隨機顏色生成函數 (藍色與綠色色系)
+        function getRandomColor() {
+            const green = Math.floor(Math.random() * 128);  // Green will be between 0 and 127
+            const blue = Math.floor(Math.random() * 128) + 128;  // Blue will be between 128 and 255
+            const color = `#00${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
+            return color;
+        }
+
+
+
+        // Function to get a consistent color for each company
+        function getCompanyColor(companyName) {
+            if (colorMap[companyName]) {
+                return colorMap[companyName]; // Return the color if already assigned
+            } else {
+                const newColor = getRandomColor(); // Generate a new color
+                colorMap[companyName] = newColor; // Store the color for future use
+                return newColor;
+            }
+        }
+    </script>    
+</body>
+</html>

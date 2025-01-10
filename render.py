@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template, redirect, url_for, jsonify
-from auto.auto_crawl import move_file, get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10, get_data_12, get_data13, get_data14
+from auto.auto_crawl import move_file, get_data1, get_data2, get_data3, get_data4, get_data5, get_data6, get_data7_1, get_data7_2, get_data7_3, get_data7_4, get_data7_5, get_data7_6, get_data8_1, get_data8_2, get_data8_3, get_data9_1, get_data9_2, get_data_10, get_data_12, get_data13, get_data14, get_data15_0, get_data15_1
 import json
 import pandas as pd
 from operator import itemgetter
@@ -11,6 +11,9 @@ import arrow
 from dash import Dash, dcc, html
 import plotly.express as px
 from upload_sql import upload_to_sql
+import numpy as np
+from datetime import datetime
+from tqdm import tqdm
 
 app = Flask(__name__)
 FILE_SOURCE  = "auto/new_data"
@@ -33,7 +36,7 @@ def home():
     fig1, fig2 = FX_corr_overtime()
     fig1_html = fig1.to_html(full_html = False)
     fig2_html = fig2.to_html(full_html = False)
-    return render_template('home.html', fig1_html=fig1_html, fig2_html=fig2_html)
+    return render_template('home.html', fig1_html = fig1_html, fig2_html = fig2_html)
 
 @app.route('/update_all', methods=['GET', 'POST'])
 def update_all():
@@ -51,6 +54,8 @@ def update_all():
     update_data12()
     update_data13()
     update_data14()
+    update_data15_0()
+    update_data15_1()
     message = '更新所有資料'
     return render_template('update_home.html', message = message)
 
@@ -169,6 +174,98 @@ def product_analysis():
 @app.route('/operation_condition', methods=['GET', 'POST'])
 def operation_condition():
     return render_template('operation_condition.html')
+
+
+@app.route('/industry_analysis', methods=['GET', 'POST'])
+def industry_analysis():
+    # 讀取資料
+    df15_0 = pd.read_excel('auto/data/15_monthlyrevenue_related.xlsx', index_col=False)
+    # 獲取所有公司名稱（去重）
+    companies = df15_0['公司名稱'].unique()
+    df15_0['當月營收'] = df15_0['當月營收'].str.replace(',', '').astype(int)
+    # 處理多選篩選條件
+    selected_companies = request.form.getlist('selected_companies')  # 接收多選值
+
+    if selected_companies:
+        # 篩選符合條件的公司
+        df15_filtered = df15_0[df15_0['公司名稱'].isin(selected_companies)]
+        filtered_table = df15_filtered.to_html(classes='data', header="true")  # 篩選後表格
+
+        # 分組數據：構造圖表數據
+        grouped = df15_filtered.groupby('公司名稱')
+        # print(grouped)
+        monthly_revenue_data = []
+        yoy_data = []
+        quarterly_data = []
+        
+        for company, group in grouped:
+            # print(f"公司名:{company}, labels:{group['公告日期'].tolist()}, values: {type(group['當月營收'].tolist()[0])}")
+            monthly_revenue_data.append({
+                "label": company,  # 公司名稱
+                "labels": group['公告日期'].tolist(),  # 公告日期（X 軸）
+                "values": group['當月營收'].tolist()  # 當月營收（Y 軸）
+            })
+
+            yoy_data.append({
+                "label": company,  # 公司名稱
+                "labels": group['公告日期'].tolist(),  # 公告日期（X 軸）
+                "values": group['去年同月增減(%)'].tolist()  # 去年同月增減率（Y 軸）
+            })
+        # print(type(monthly_revenue_data['values']))
+    else:
+        filtered_table = None  # 不顯示表格
+        monthly_revenue_data = []  # 空數據
+        yoy_data = []  # 空數據
+    
+
+    # 讀取資料
+    df15_1 = pd.read_excel('auto/data/15_quarterlyreport.xlsx', index_col=False)
+    # print(df15_1.columns)
+    # 獲取所有公司名稱（去重）
+    companies = df15_1['公司名稱'].unique()
+    # df15_1['當月營收'] = df15_1['當月營收'].str.replace(',', '').astype(int)
+    # 處理多選篩選條件
+    selected_companies = request.form.getlist('selected_companies')  # 接收多選值
+
+    if selected_companies:
+        # 篩選符合條件的公司
+        df15_filtered = df15_1[df15_1['公司名稱'].isin(selected_companies)]
+        filtered_table2 = df15_filtered.to_html(classes='data', header="true")  # 篩選後表格
+
+        # 分組數據：構造圖表數據
+        grouped = df15_filtered.groupby('公司名稱')
+
+        quarterly_data = []
+        for company, group in grouped:
+            # print(group)
+            quarterly_data.append({
+                "label": company,
+                "labels": group['公告季度'].tolist(),
+                "values1": group['毛利率(%)(營業毛利)/(營業收入)'].tolist(),
+                "values2": group['營業利益率(%)(營業利益)/(營業收入)'].tolist(),
+                "values3": group['稅前純益率(%)(稅前純益)/(營業收入)'].tolist(),
+                "values4": group['稅後純益率(%)(稅後純益)/(營業收入)'].tolist(),
+            })
+    else:
+        filtered_table2 = None  # 不顯示表格
+        quarterly_data = []
+
+    
+    return render_template(
+        'industry_analysis.html',
+        companies = companies,
+        selected_companies = selected_companies,
+        filtered_table = filtered_table,
+        monthly_revenue_data = monthly_revenue_data,
+        yoy_data = yoy_data,
+        filtered_table2 = filtered_table2,
+        quarterly_data = quarterly_data,
+
+    )
+
+
+
+
 
 @app.route('/government', methods=['GET', 'POST'])
 def government():
@@ -936,7 +1033,109 @@ def update_data14():
     message = f'更新完成: 中國汽車銷量 資料'
     return render_template('update_economic.html', message = message)
 
+@app.route('/update/get_data15_0', methods=['GET', 'POST'])
+def update_data15_0():
+    print('update_data15_0')
+    # new_data
+    years = np.arange(2017, 2025, 1)
+    months = np.arange(1, 13, 1)
+    data_types = ['otc','sii','rotc']
 
+    # years = np.arange(2024, 2025, 1)
+    # months = np.arange(12, 13, 1)
+    # data_types = ['otc']
+    all_data = os.listdir(f'{FILE_SOURCE}/15_monthlyrevenue')
+    today_year = datetime.today().year
+    today_month = datetime.today().month
+
+    # 計算總迴圈次數
+    total_iterations = len(data_types) * len(years) * len(months)
+    with tqdm(total=total_iterations, desc="Processing") as pbar:
+        for data_type in data_types:
+            for year in years:
+                for month in months:
+                    pbar.set_description(f"Processing: {data_type}, Year: {year}, Month: {month}")
+                    if f'{year}_{month}_{data_type}.xlsx' in all_data:
+                        continue
+                    if year == today_year and month < today_month: 
+                        df = get_data15_0(year, month, data_type)
+                    else:
+                        if year < today_year:
+                            df = get_data15_0(year, month, data_type)
+                    if month < 10:
+                        month = '0'+str(month)
+                    else:
+                        month = str(month)
+                    df['公告日期'] = str(year)+str(month)
+                    df.to_excel(f'{FILE_SOURCE}/15_monthlyrevenue/{year}_{month}_{data_type}.xlsx')
+                    pbar.update(1)
+
+    data_list = os.listdir(f'{FILE_SOURCE}/15_monthlyrevenue')
+    DF = pd.DataFrame()
+    for tmp in data_list:
+        df = pd.read_excel(f'{FILE_SOURCE}/15_monthlyrevenue/{tmp}', index_col = 0)
+        DF = pd.concat([DF, df])
+    DF.to_excel(f'{FILE_DESTINATION}/15_monthlyrevenue.xlsx', index = False)
+    DF = DF[DF['相關公司'] == 'YES']
+    DF.to_excel(f'{FILE_DESTINATION}/15_monthlyrevenue_related.xlsx', index = False)
+    file_name = '15_monthlyrevenue'
+    message = f'更新完成: 產業分析:每月營收 資料'
+    return render_template('update_industry.html', message = message)
+
+@app.route('/update/get_data15_1', methods=['GET', 'POST'])
+def update_data15_1():
+    print('update_data15_1')
+    # new_data
+    years = np.arange(2017, 2025, 1)-1911
+    months = np.arange(1, 5, 1)
+    data_types = ['otc','sii','rotc']
+
+    # years = np.arange(2024, 2025, 1)
+    # months = np.arange(12, 13, 1)
+    # data_types = ['otc']
+    os.makedirs(f'{FILE_SOURCE}/15_quarterlyreport', exist_ok=True)
+    all_data = os.listdir(f'{FILE_SOURCE}/15_quarterlyreport')
+    today_year = datetime.today().year-1911
+    today_month = datetime.today().month
+    # if today_month <=2:
+    #     today_month = today_month + 12
+    #     today_month = (today_month-2)//3
+
+    # 計算總迴圈次數
+    total_iterations = len(data_types) * len(years) * len(months)
+    with tqdm(total=total_iterations, desc="Processing") as pbar:
+        for data_type in data_types:
+            for year in years:
+                for month in months:
+                    print(f"year:{year}, today_year:{today_year}, month:{month}, today_month:{today_month}")
+                    pbar.set_description(f"Processing: {data_type}, Year: {year}, Month: {month}")
+                    if f'{year}_{month}_{data_type}.xlsx' in all_data:
+                        continue
+                    if year == 113 and month == 4:
+                        continue 
+                        # df = get_data15_1(year, month, data_type)
+                    else:
+                        if year < today_year:
+                            df = get_data15_1(year, month, data_type)
+                    if month*3 < 10:
+                        month = '0'+str(month*3)
+                    else:
+                        month = str(month*3)
+                    df['公告季度'] = str(year+1911)+str(month)
+                    df.to_excel(f'{FILE_SOURCE}/15_quarterlyreport/{year}_{month}_{data_type}.xlsx')
+                    pbar.update(1)
+
+    data_list = os.listdir(f'{FILE_SOURCE}/15_quarterlyreport')
+    DF = pd.DataFrame()
+    for tmp in data_list:
+        df = pd.read_excel(f'{FILE_SOURCE}/15_quarterlyreport/{tmp}', index_col = 0)
+        DF = pd.concat([DF, df])
+    DF.to_excel(f'{FILE_DESTINATION}/15_quarterlyreport.xlsx', index = False)
+    DF = DF[DF['相關公司'] == 'YES']
+    DF.to_excel(f'{FILE_DESTINATION}/15_quarterlyreport.xlsx', index = False)
+
+    message = f'更新完成: 產業分析:每季營益分析 資料'
+    return render_template('update_industry.html', message = message)
 
 
 if __name__ == '__main__':
